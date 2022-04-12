@@ -46,12 +46,21 @@ def attribute_to_question(attr, object_name):
 
 
 def generate_location_question(entity_dict, seed=None):
-    # entity_dict is a dict of {entity: location}
+    ''' Create a question of the form, "where is the {entity} ?"
+
+    Args:
+        entity_dict: A dictionary of {entity : location} strings.
+        seed: A random number to seed the random generator
+    Returns:
+        A question as a string, the answer to the question (a location), and the entity used in the question. 
+    '''
+    if seed is not None:
+        np.random.seed(seed)
+
     entities, locations = [], []
-    for item in entity_dict:
-        if item == "" or entity_dict[item] == "":
+    for item, loc in entity_dict.items():
+        if item == "" or loc == "":
             continue
-        loc = entity_dict[item]
         item, loc = item.lower(), loc.lower()
         # use most immediate container as answer
         if "." in loc:
@@ -61,27 +70,35 @@ def generate_location_question(entity_dict, seed=None):
             continue
         entities.append(item)
         locations.append(loc)
-    if seed is not None:
-        np.random.seed(seed)
+    
     idx = np.random.randint(low=0, high=len(entities))
     return "where is the " + entities[idx] + " ?", locations[idx], entities[idx]
 
 
 def generate_attribute_question(entity_dict, seed=None):
-    # entity_dict is a dict of {entity: attribute}
+    ''' Create a question of the form, "is {entity} {attribute} ?"
+
+    Args:
+        entity_dict: A dictionary of {entity : list(attributes)} strings.
+        seed: A random number to seed the random generator
+    Returns:
+        A question as a string, the answer to the question (1 or 0), 
+        and the attribute and entity used in the question. 
+    '''
     if seed is not None:
         np.random.seed(seed)
 
-    all_attributes = set(["edible", "drinkable", "portable", "openable",
-                          "cuttable", "sharp", "heat_source", "cookable",
-                          "holder"])
+    all_attributes = set(["edible", "drinkable", "portable", "openable", 
+            "cuttable", "sharp", "heat_source", "cookable", "holder"])
     all_entities = set()
     attribute_dict = dict()
+
+    # Create a reverse index of attribute to items
     for item in entity_dict:
         if item not in FAKE_WORDS:
             continue
 
-        attrs_of_this_obj = list(set(entity_dict[item]) & all_attributes)
+        attrs_of_this_obj = set(entity_dict[item]).intersection(all_attributes)
         for attr in attrs_of_this_obj:
             if attr not in attribute_dict:
                 attribute_dict[attr] = set()
@@ -91,7 +108,7 @@ def generate_attribute_question(entity_dict, seed=None):
     all_attributes = sorted([key for key in attribute_dict])
     random_attr = np.random.choice(all_attributes)
     entity_true = attribute_dict[random_attr]
-    entity_false = sorted(all_entities - entity_true)
+    entity_false = sorted(all_entities.difference(entity_true))
     entity_true = sorted(entity_true)
 
     if len(entity_false) == 0 or len(entity_true) == 0:

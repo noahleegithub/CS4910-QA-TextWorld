@@ -180,7 +180,7 @@ def generate_game_file(pnum, path="./",
     rand = np.random.default_rng(seed)
     if seed is None:
         seed = rand.integers(100000000)
-        
+
     if random_map:
         n_rooms = rand.integers(2, 12, endpoint=True)
         map_seed = rand.integers(100000000)    

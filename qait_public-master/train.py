@@ -61,6 +61,7 @@ def create_games(config: SimpleNamespace, data_path: str):
     training_games = game_generator(path=games_dir, 
         random_map=config.general.random_map, question_type=config.general.question_type, 
         train_data_size=config.general.train_data_size)
+    print(training_games)
 
 
 def train(data_path):

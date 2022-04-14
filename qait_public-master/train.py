@@ -1,9 +1,11 @@
 import argparse
+import yaml
 import datetime
 import os
 import copy
 import time
 import json
+from types import SimpleNamespace
 import visdom
 import torch
 import numpy as np
@@ -17,7 +19,7 @@ from textworld.gym import register_game, make_batch2
 from agent import Agent
 import generic
 import reward_helper
-import game_generator
+from game_generator import game_generator
 import evaluate
 from query import process_facts
 
@@ -35,6 +37,30 @@ request_infos = textworld.EnvInfos(description=True,
                                    game=True,
                                    admissible_commands=True,
                                    extras=["object_locations", "object_attributes", "uuid"])
+
+
+def create_games(config: SimpleNamespace, data_path: str):
+    # Create temporary folder for the generated games.
+    global GAMES_DIR
+    GAMES_DIR = tempfile.TemporaryDirectory(prefix="tw_games") # This is not deleted upon error. It would be better to use a with statement.
+    games_dir = os.path.join(GAMES_DIR.name, "") # So path ends with '/'.
+
+    textworld_data_path = os.path.join(data_path, "textworld_data")
+    tmp_textworld_data_path = os.path.join(games_dir, "textworld_data")
+
+    assert os.path.exists(textworld_data_path), "Oh no! textworld_data folder is not there..."
+    os.mkdir(tmp_textworld_data_path)
+    copy_tree(textworld_data_path, tmp_textworld_data_path)
+    if config.evaluate.run_eval:
+        testset_path = os.path.join(data_path, config.general.testset_path)
+        tmp_testset_path = os.path.join(games_dir, config.general.testset_path)
+        assert os.path.exists(testset_path), "Oh no! test_set folder is not there..."
+        os.mkdir(tmp_testset_path)
+        copy_tree(testset_path, tmp_testset_path)
+
+    training_games = game_generator(path=games_dir, 
+        random_map=config.general.random_map, question_type=config.general.question_type, 
+        train_data_size=config.general.train_data_size)
 
 
 def train(data_path):
@@ -390,8 +416,21 @@ def train(data_path):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Train an agent.")
+    parser.add_argument("config_path", default="./config.yaml")
     parser.add_argument("data_path",
                         default="./",
                         help="where the data (games) are.")
     args = parser.parse_args()
-    train(args.data_path)
+    with open(args.config_path) as config_reader:
+        config = yaml.safe_load(config_reader)
+        config = json.loads(json.dumps(config), object_hook=lambda d : SimpleNamespace(**d))
+    
+    try:
+        create_games(config, args.data_path)
+        #train(args.data_path)
+    except:
+        pass
+    finally:
+        if GAMES_DIR:
+            GAMES_DIR.cleanup()
+    

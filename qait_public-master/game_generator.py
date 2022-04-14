@@ -4,6 +4,7 @@ import uuid
 import os
 import time
 import multiprocessing as mp
+from types import SimpleNamespace
 from os.path import join as pjoin
 
 with open("vocabularies/fake_words.txt") as f:
@@ -265,32 +266,18 @@ def game_generator_queue(path="./", random_map=False, question_type="location", 
     return q
 
 
-def game_generator(path="./", random_map=False, question_type="location", train_data_size=1):
+def game_generator(path="./", random_map=False, question_type="location", train_data_size=1, seed=None):
     print("Generating %s games..." % str(train_data_size))
-    res = set()
+    res = []
 
+    rand = np.random.default_rng(seed)
     if random_map:
-        this_many_rooms = np.linspace(2, 12, train_data_size + 2)[1:-1]
-        this_many_rooms = [int(item) for item in this_many_rooms]
-        this_many_objects = []
-        for i in range(len(this_many_rooms)):
-            # ith game
-            tmp = np.linspace(this_many_rooms[i] * 3, this_many_rooms[i] * 6, train_data_size + 2)[1:-1]
-            tmp = [int(item) for item in tmp]
-            if tmp[i] <= this_many_rooms[i] * 3:
-                tmp[i] = this_many_rooms[i] * 3 + 1
-            this_many_objects.append(tmp[i])
+        this_many_rooms = rand.integers(2, 12, train_data_size, endpoint=True)        
     else:
-        this_many_rooms = 6
-        this_many_objects = np.linspace(this_many_rooms * 3, this_many_rooms * 6, train_data_size + 2)[1:-1]
-        this_many_objects = [int(item) for item in this_many_objects]
-        for i in range(len(this_many_objects)):
-            if this_many_objects[i] <= this_many_rooms * 3:
-                this_many_objects[i] = this_many_rooms * 3 + 1
+        this_many_rooms = 6 * np.ones(train_data_size)
+    this_many_objects = rand.integers(3 * this_many_rooms, 6 * this_many_rooms, train_data_size, endpoint=True)
 
-    while(True):
-        if len(res) == train_data_size:
-            break
+    while(len(res) < train_data_size):
         _id = len(res)
         try:
             if random_map:
@@ -299,6 +286,6 @@ def game_generator(path="./", random_map=False, question_type="location", train_
                 game_file_name = generate_fixed_map_games(len(res), path=path, question_type=question_type, random_seed=123 + _id, num_object=this_many_objects[_id])
         except ValueError:
             continue
-        res.add(game_file_name)
+        res.append(game_file_name)
     print("Done generating games...")
-    return list(res)
+    return res

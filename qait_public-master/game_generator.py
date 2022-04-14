@@ -174,6 +174,35 @@ def generate_qa_pairs(infos, question_type="location", seed=42):
 
 ########################################################## game generator
 
+def generate_game_file(pnum, path="./", 
+    random_map=True, question_type="location", seed=None):
+     
+    rand = np.random.default_rng(seed)
+    if seed is None:
+        seed = rand.integers(100000000)
+        
+    if random_map:
+        n_rooms = rand.integers(2, 12, endpoint=True)
+        map_seed = rand.integers(100000000)    
+    else:
+        n_rooms = 6
+        map_seed = 123
+    n_objects = rand.integers(3 * n_rooms, 6 * n_rooms, endpoint=True)
+    with_placeholders = "--with-placeholders" if question_type == "attribute" else ""
+    
+    config_list = map(str, [n_rooms, n_objects, map_seed, with_placeholders, seed])
+    game_name = "game_{uid}{pnum}_config_{config}.ulx".format(
+        uid=uuid.uuid1(), pnum=pnum, config="_".join(config_list)
+    )
+    game_file = os.path.join(path, game_name)
+
+    cmd = "tw-make tw-iqa --nb-rooms={} --nb-entities={} --seed-map={} {}\
+        --third-party={} --seed={} --output={} --silent --kb={}".format(
+            n_rooms, n_objects, map_seed, with_placeholders, "challenge.py",
+            seed, game_file, os.path.join(path, "textworld_data")
+        )
+    os.system(cmd)
+    return game_file
 
 def generate_fixed_map_games(p_num, path="./", question_type="location", random_seed=None, num_object=None):
     if random_seed is None:
@@ -270,20 +299,11 @@ def game_generator(path="./", random_map=False, question_type="location", train_
     print("Generating %s games..." % str(train_data_size))
     res = []
 
-    rand = np.random.default_rng(seed)
-    if random_map:
-        this_many_rooms = rand.integers(2, 12, train_data_size, endpoint=True)        
-    else:
-        this_many_rooms = 6 * np.ones(train_data_size)
-    this_many_objects = rand.integers(3 * this_many_rooms, 6 * this_many_rooms, train_data_size, endpoint=True)
-
     while(len(res) < train_data_size):
-        _id = len(res)
+        pnum = len(res)
         try:
-            if random_map:
-                game_file_name = generate_random_map_games(len(res), path=path, question_type=question_type, random_seed=123 + _id, num_room=this_many_rooms[_id], num_object=this_many_objects[_id])
-            else:
-                game_file_name = generate_fixed_map_games(len(res), path=path, question_type=question_type, random_seed=123 + _id, num_object=this_many_objects[_id])
+            game_file_name = generate_game_file(pnum, path=path, random_map=random_map,
+                question_type=question_type, seed=seed)
         except ValueError:
             continue
         res.append(game_file_name)

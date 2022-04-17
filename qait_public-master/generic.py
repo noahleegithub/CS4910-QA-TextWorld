@@ -152,7 +152,7 @@ class RingBuffer(object):
         return self.data[idx]
 
     def push(self, item):
-        if self.filled():
+        if not self.filled():
             self.data.append(item)
         else:
             if not self.fixed:

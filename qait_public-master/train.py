@@ -60,7 +60,7 @@ def create_games(config: SimpleNamespace, data_path: str):
     
     training_game_queue = game_generator_queue(path=games_dir, 
         random_map=config.general.random_map, question_type=config.general.question_type,
-        max_q_size=config.training.batch_size * 2, nb_worker=8)
+        max_q_size=config.training.batch_size * 2, nb_worker=1)
     
     fixed_buffer = True if config.general.train_data_size != -1 else False
     buffer_capacity =  config.general.train_data_size if fixed_buffer else config.training.batch_size * 5
@@ -73,7 +73,7 @@ def train_2(config: SimpleNamespace, data_path: str, games: GameBuffer):
     while episode_no < config.training.max_episode:
         rand = np.random.default_rng(episode_no)
         games.poll()
-        if len(games) == 0:
+        if len(games) < config.training.batch_size:
             time.sleep(0.1)
             continue
         sampled_games = np.random.choice(games, config.training.batch_size).tolist()
@@ -82,8 +82,11 @@ def train_2(config: SimpleNamespace, data_path: str, games: GameBuffer):
         env = gym.make(env_id)
         env.seed(episode_no)
 
+        observations, infos = env.reset()
+        print(observations)
+        print(infos)
         # TODO: make env a custom environment
-        # TODO: test game queue
+        episode_no += 1
 
 def train(data_path):
 

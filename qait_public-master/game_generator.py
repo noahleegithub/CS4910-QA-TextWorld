@@ -264,9 +264,9 @@ def generate_random_map_games(p_num, path="./", question_type="location", random
 
 
 def game_generator_queue(path="./", random_map=False, question_type="location", max_q_size=30, wait_time=0.5, nb_worker=1):
-
+    print("Starting game generation...")
     q = mp.Queue()
-    nb_worker = min(nb_worker, mp.cpu_count() - 1)
+    nb_worker = max(min(nb_worker, mp.cpu_count() - 1), 1)
 
     def data_generator_task(pnum):
         counter = 0

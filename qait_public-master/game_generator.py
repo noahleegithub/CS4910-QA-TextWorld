@@ -268,17 +268,15 @@ def game_generator_queue(path="./", random_map=False, question_type="location", 
     q = mp.Queue()
     nb_worker = min(nb_worker, mp.cpu_count() - 1)
 
-    def data_generator_task(p_num):
+    def data_generator_task(pnum):
         counter = 0
         while True:
-            np.random.seed(p_num * 12345 + counter)
+            np.random.seed(pnum * 12345 + counter)
             seed = np.random.randint(100000000)
             if q.qsize() < max_q_size:
                 try:
-                    if random_map:
-                        game_file_name = generate_random_map_games(p_num, path=path, question_type=question_type, random_seed=seed)
-                    else:
-                        game_file_name = generate_fixed_map_games(p_num, path=path, question_type=question_type, random_seed=seed)
+                    game_file_name = generate_game_file(pnum, path=path, random_map=random_map,
+                        question_type=question_type, seed=seed)
                 except ValueError:
                     continue
                 q.put(game_file_name)

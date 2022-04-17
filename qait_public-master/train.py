@@ -17,9 +17,9 @@ import gym
 import textworld
 from textworld.gym import register_game, make_batch2
 from agent import Agent
-import generic
+from generic import GameBuffer
 import reward_helper
-from game_generator import game_generator
+from game_generator import game_generator, game_generator_queue
 import evaluate
 from query import process_facts
 
@@ -57,12 +57,33 @@ def create_games(config: SimpleNamespace, data_path: str):
         assert os.path.exists(testset_path), "Oh no! test_set folder is not there..."
         os.mkdir(tmp_testset_path)
         copy_tree(testset_path, tmp_testset_path)
+    
+    training_game_queue = game_generator_queue(path=games_dir, 
+        random_map=config.general.random_map, question_type=config.general.question_type,
+        max_q_size=config.training.batch_size * 2, nb_worker=8)
+    
+    fixed_buffer = True if config.general.train_data_size != -1 else False
+    buffer_capacity =  config.general.train_data_size if fixed_buffer else config.training.batch_size * 5
+    training_game_buffer = GameBuffer(buffer_capacity, fixed_buffer, training_game_queue)
 
-    training_games = game_generator(path=games_dir, 
-        random_map=config.general.random_map, question_type=config.general.question_type, 
-        train_data_size=config.general.train_data_size)
-    print(training_games)
+    return training_game_buffer
 
+def train_2(config: SimpleNamespace, data_path: str, games: GameBuffer):
+    episode_no = 0
+    while episode_no < config.training.max_episode:
+        rand = np.random.default_rng(episode_no)
+        games.poll()
+        if len(games) == 0:
+            time.sleep(0.1)
+            continue
+        sampled_games = np.random.choice(games, config.training.batch_size).tolist()
+        env_ids = [register_game(gamefile, request_infos=request_infos) for gamefile in sampled_games]
+        env_id = make_batch2(env_ids, parallel=True)
+        env = gym.make(env_id)
+        env.seed(episode_no)
+
+        # TODO: make env a custom environment
+        # TODO: test game queue
 
 def train(data_path):
 
@@ -427,8 +448,8 @@ if __name__ == '__main__':
         config = json.loads(json.dumps(config), object_hook=lambda d : SimpleNamespace(**d))
     
     try:
-        create_games(config, args.data_path)
-        #train(args.data_path)
+        game_gen = create_games(config, args.data_path)
+        train_2(config, args.data_path, game_gen)
     except:
         pass
     finally:

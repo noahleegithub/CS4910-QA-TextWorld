@@ -133,6 +133,45 @@ def list_of_token_list_to_char_input(list_of_token_list, char2id):
     return res
 
 
+
+class RingBuffer(object):
+    
+    def __init__(self, capacity=10, fixed=False) -> None:
+        super().__init__()
+        self.capacity = capacity
+        self.fixed = fixed
+        self.reset()
+        
+    def reset(self):
+        self.data = []
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        return self.data[idx]
+
+    def push(self, item):
+        if self.filled():
+            self.data.append(item)
+        else:
+            if not self.fixed:
+                self.data.pop()
+                self.data.append(item)
+
+    def filled(self):
+        return not len(self) < self.capacity
+
+class GameBuffer(RingBuffer):
+
+    def __init__(self, capacity: int, fixed: bool, generator: mp.Queue) -> None:
+        super().__init__(capacity=capacity, fixed=fixed)
+        self.generator = generator
+
+    def poll(self):
+        for _ in range(self.generator.qsize()):
+            self.push(self.generator.get())
+
 class HistoryScoreCache(object):
 
     def __init__(self, capacity=1):

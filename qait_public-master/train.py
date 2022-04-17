@@ -70,6 +70,7 @@ def create_games(config: SimpleNamespace, data_path: str):
 
 def train_2(config: SimpleNamespace, data_path: str, games: GameBuffer):
     episode_no = 0
+    print("Started training...")
     while episode_no < config.training.max_episode:
         rand = np.random.default_rng(episode_no)
         games.poll()
@@ -83,8 +84,30 @@ def train_2(config: SimpleNamespace, data_path: str, games: GameBuffer):
         env.seed(episode_no)
 
         observations, infos = env.reset()
-        print(observations)
-        print(infos)
+        
+        for step_no in range(config.training.max_nb_steps_per_episode):
+            actions = select_actions(state) # list of strings of length batch_size
+            next_state, reward, done, infos = env.step(actions) # modify to output questions and rewards
+            reward = torch.tensor([reward], device=device)
+
+            # game is done if agent outputs 'wait'
+
+            # Store the transition in memory
+            memory.push(state, action, next_state, reward)
+
+            # Move to the next state
+            state = next_state
+
+            # Perform one step of the optimization (on the policy network)
+            optimize_model()
+            if done:
+                episode_durations.append(t + 1)
+                plot_durations()
+                break
+        # Update the target network, copying all weights and biases in DQN
+        if episode_no % config.training.target_net_update_frequency == 0:
+            target_net.load_state_dict(policy_net.state_dict())
+        
         # TODO: make env a custom environment
         episode_no += 1
 
@@ -177,19 +200,19 @@ def train(data_path):
         env = gym.make(env_id)
         env.seed(episode_no)
 
-        obs, infos = env.reset()
+        obs, infos = env.reset()                                                # Reset env, get observation and supplementary infos
         batch_size = len(obs)
         # generate question-answer pairs here
         questions, answers, reward_helper_info = game_generator.generate_qa_pairs(infos, question_type=agent.question_type, seed=episode_no)
         print("====================================================================================", episode_no)
-        print(questions[0], answers[0])
+        print(questions[0], answers[0])                                         # Generate 1 QA pair for each sample in batch using infos (plus reward helper?)
 
-        agent.train()
-        agent.init(obs, infos)
+        agent.train()                                                           # Set agent to train mode (eh?)
+        agent.init(obs, infos)                                                  
 
         commands, last_facts, init_facts = [], [], []
-        commands_per_step, game_facts_cache = [], []
-        for i in range(batch_size):
+        commands_per_step, game_facts_cache = [], []                            # Associate at each step the observation with
+        for i in range(batch_size):                                             # the command used to get it
             commands.append("restart")
             last_facts.append(None)
             init_facts.append(None)
@@ -223,12 +246,12 @@ def train(data_path):
 
             # generate commands
             if agent.noisy_net:
-                agent.reset_noise()  # Draw a new set of noisy weights
+                agent.reset_noise()  # Draw a new set of noisy weights          # Parametric noise added to weights
 
             observation_strings_w_history = agent.naozi.get()
             input_observation, input_observation_char, _ =  agent.get_agent_inputs(observation_strings_w_history)
             commands, replay_info = agent.act(obs, infos, input_observation, input_observation_char, input_quest, input_quest_char, possible_words, random=act_randomly)
-            for i in range(batch_size):
+            for i in range(batch_size):                                         # Get Agent action and step
                 commands_per_step[i].append(commands[i])
 
             replay_info = [observation_strings_w_history, questions, possible_words] + replay_info

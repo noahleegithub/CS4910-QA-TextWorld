@@ -170,7 +170,9 @@ class GameBuffer(RingBuffer):
 
     def poll(self):
         for _ in range(self.generator.qsize()):
-            self.push(self.generator.get())
+            game = self.generator.get()
+            assert(os.path.exists(game))
+            self.push(game)
 
 class HistoryScoreCache(object):
 

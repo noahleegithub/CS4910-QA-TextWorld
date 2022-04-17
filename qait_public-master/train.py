@@ -16,6 +16,7 @@ from distutils.dir_util import copy_tree
 import gym
 import textworld
 from textworld.gym import register_game, make_batch2
+from wrappers import PreprocessorWrapper
 from agent import Agent
 from generic import GameBuffer
 import reward_helper
@@ -82,9 +83,15 @@ def train_2(config: SimpleNamespace, data_path: str, games: GameBuffer):
         env_id = make_batch2(env_ids, parallel=True)
         env = gym.make(env_id)
         env.seed(episode_no)
-
-        observations, infos = env.reset()
+        env = PreprocessorWrapper(env, config)
         
+        
+        observations, infos = env.reset()
+        print(observations)
+        print(infos)
+        print(env.step(['go south']))
+        print('hi')
+        break
         for step_no in range(config.training.max_nb_steps_per_episode):
             actions = select_actions(state) # list of strings of length batch_size
             next_state, reward, done, infos = env.step(actions) # modify to output questions and rewards

@@ -27,7 +27,7 @@ def attribute_to_question(attr, object_name):
     elif attr == "drinkable":
         res = "is " + object_name + " drinkable ?"
     elif attr == "portable":
-        res = "can one put " + object_name + " into pocket ?"
+        res = "can one put " + object_name + " into a pocket ?"
     elif attr == "openable":
         res = "is it possible to open " + object_name + " ?"
     elif attr == "cuttable":
@@ -35,9 +35,9 @@ def attribute_to_question(attr, object_name):
     elif attr == "sharp":
         res = "can one cut anything with a " + object_name + " ?"
     elif attr == "heat_source":
-        res = "can one cook things with the " + object_name + " ?"
+        res = "can one cook things with a " + object_name + " ?"
     elif attr == "cookable":
-        res = "can the " + object_name + " be cooked ?"
+        res = "can a " + object_name + " be cooked ?"
     elif attr == "holder":
         res = "can " + object_name + " hold things ?"
     else:
@@ -149,19 +149,20 @@ def generate_existence_question(entity_dict, seed=None):
 
 
 def generate_qa_pairs(infos, question_type="location", seed=42):
+    batch_size = len(infos['extra.object_locations'])
     output_questions, output_answers = [], []
-    reward_helper_info = {"batch_size": len(infos["extra.object_locations"]),
-                          "_entities": [],
-                          "_answers": [],
-                          "_attributes": []}
-    for i in range(len(infos["extra.object_locations"])):
+    reward_helper_info = {'batch_size': batch_size,
+                          '_entities': [],
+                          '_answers': [],
+                          '_attributes': []}
+    for i in range(batch_size):
         if question_type == "location":
-            _q, _a, _e = generate_location_question(infos["extra.object_locations"][i], seed=seed * len(infos["extra.object_locations"]) + i)
+            _q, _a, _e = generate_location_question(infos['extra.object_locations'][i], seed=seed*batch_size+i)
         elif question_type == "attribute":
-            _q, _a, _attr, _e = generate_attribute_question(infos["extra.object_attributes"][i], seed=seed * len(infos["extra.object_locations"]) + i)
-            reward_helper_info["_attributes"].append(_attr)
+            _q, _a, _attr, _e = generate_attribute_question(infos['extra.object_attributes'][i], seed=seed*batch_size+i)
+            reward_helper_info['_attributes'].append(_attr)
         elif question_type == "existence":
-            _q, _a, _e = generate_existence_question(infos["extra.object_locations"][i], seed=seed * len(infos["extra.object_locations"]) + i)
+            _q, _a, _e = generate_existence_question(infos['extra.object_locations'][i], seed=seed*batch_size+i)
         else:
             raise NotImplementedError
         output_questions.append(_q)

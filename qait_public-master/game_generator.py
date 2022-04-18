@@ -57,8 +57,7 @@ def generate_location_question(entity_dict, seed=None):
     Returns:
         A question as a string, the answer to the question (a location), and the entity used in the question. 
     '''
-    if seed is not None:
-        np.random.seed(seed)
+    rand = np.random.default_rng(seed)
 
     entities, locations = [], []
     for item, loc in entity_dict.items():
@@ -74,7 +73,7 @@ def generate_location_question(entity_dict, seed=None):
         entities.append(item)
         locations.append(loc)
     
-    idx = np.random.randint(low=0, high=len(entities))
+    idx = rand.integers(low=0, high=len(entities))
     return "where is the " + entities[idx] + " ?", locations[idx], entities[idx]
 
 
@@ -88,8 +87,7 @@ def generate_attribute_question(entity_dict, seed=None):
         A question as a string, the answer to the question (1 or 0), 
         and the attribute and entity used in the question. 
     '''
-    if seed is not None:
-        np.random.seed(seed)
+    rand = np.random.default_rng(seed)
 
     all_attributes = set(["edible", "drinkable", "portable", "openable", 
             "cuttable", "sharp", "heat_source", "cookable", "holder"])
@@ -109,7 +107,7 @@ def generate_attribute_question(entity_dict, seed=None):
         all_entities.add(item)
 
     all_attributes = sorted([key for key in attribute_dict])
-    random_attr = np.random.choice(all_attributes)
+    random_attr = rand.choice(all_attributes)
     entity_true = attribute_dict[random_attr]
     entity_false = sorted(all_entities.difference(entity_true))
     entity_true = sorted(entity_true)
@@ -120,7 +118,7 @@ def generate_attribute_question(entity_dict, seed=None):
         #    seed = seed + 1
         # return generate_attribute_question(entity_dict, seed)
 
-    if np.random.rand() > 0.5:
+    if rand.random() > 0.5:
         answer = "1"
         entity_ = np.random.choice(entity_true)
     else:
@@ -140,13 +138,13 @@ def generate_existence_question(entity_dict, seed=None):
         entities_in_this_game.append(item)
     entities_not_in_this_game = list(ALL_ENTITIES - set(entities_in_this_game) - FAKE_WORDS)
 
-    if seed is not None:
-        np.random.seed(seed)
-    if np.random.rand() > 0.5:
-        entity = np.random.choice(entities_in_this_game)
+    rand = np.random.default_rng(seed)
+
+    if rand.random() > 0.5:
+        entity = rand.choice(entities_in_this_game)
         return "is there any " + entity + " in the world ?", "1", entity
     else:
-        entity = np.random.choice(entities_not_in_this_game)
+        entity = rand.choice(entities_not_in_this_game)
         return "is there any " + entity + " in the world ?", "0", entity
 
 
@@ -281,7 +279,7 @@ def game_generator_queue(path="./", random_map=False, question_type="location", 
                         question_type=question_type, seed=seed)
                     q.put(game_file_name)
                 except:
-                    break
+                    continue
             else:
                 time.sleep(wait_time)
             counter += 1

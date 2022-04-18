@@ -8,7 +8,7 @@ general:
   use_cuda: True  # disable this when running on machine without cuda
 
 training:
-  batch_size: 1
+  batch_size: 2
   max_episode: 1000000
   learn_start_from_this_episode: 1000
   target_net_update_frequency: 1000  # sync target net with online net per this many epochs

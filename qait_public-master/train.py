@@ -16,7 +16,7 @@ from distutils.dir_util import copy_tree
 import gym
 import textworld
 from textworld.gym import register_game, make_batch2
-from wrappers import PreprocessorWrapper, QAPairWrapper
+from wrappers import PreprocessorWrapper, QAPairWrapper, TokenizerWrapper
 from agent import Agent
 from generic import GameBuffer
 import reward_helper
@@ -75,7 +75,7 @@ def train_2(config: SimpleNamespace, data_path: str, games: GameBuffer):
     while episode_no < config.training.max_episode:
         rand = np.random.default_rng(episode_no)
         games.poll()
-        if len(games) < config.training.batch_size:
+        if len(games) == 0:
             time.sleep(0.1)
             continue
         sampled_games = np.random.choice(games, config.training.batch_size).tolist()
@@ -83,18 +83,22 @@ def train_2(config: SimpleNamespace, data_path: str, games: GameBuffer):
         env_id = make_batch2(env_ids, parallel=True)
         env = gym.make(env_id)
         env.seed(episode_no)
-        env = QAPairWrapper(PreprocessorWrapper(env, config), config)
-        
-        
+        env = PreprocessorWrapper(env)
+        env = QAPairWrapper(env, config)
+        env = TokenizerWrapper(env)
+        # Maybe wrappers to map tokens to indexes and then to embeddings?
+        # TODO add in reward wrapper
+
         observations, infos = env.reset()
         print(observations)
-        print(infos)
-        print(env.step(['go south']))
-        print('hi')
+        obs, _, _, _ = env.step(['go south', 'open gate'])
+        print(obs)
+        obs, _, _, _ = env.step(['go south', 'go west'])
+        print(obs)
         break
         for step_no in range(config.training.max_nb_steps_per_episode):
             actions = select_actions(state) # list of strings of length batch_size
-            next_state, reward, done, infos = env.step(actions) # modify to output questions and rewards
+            next_state, reward, done, infos = env.step(actions) # modify to output rewards
             reward = torch.tensor([reward], device=device)
 
             # game is done if agent outputs 'wait'

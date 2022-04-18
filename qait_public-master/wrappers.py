@@ -1,6 +1,10 @@
+from typing import Tuple, Any, Mapping, List
 from types import SimpleNamespace
 import gym
+from textworld import GameState
+from gym.core import Wrapper
 import spacy
+import re
 
 from game_generator import generate_qa_pairs
 
@@ -9,19 +13,35 @@ class PreprocessorWrapper(gym.ObservationWrapper):
         super().__init__(env)
         self.config = config
         self.nlp = spacy.load('en_core_web_sm', disable=['ner', 'parser', 'tagger'])
+        self.reGarbageChars = re.compile('[$_|\\\\/>]')
+        self.reLocationTag = re.compile('-=.*=-')
 
-    def observation(self, obs_and_infos):
-        observations, infos = obs_and_infos
-        observations = [self.nlp(obs) for obs in observations]
-        return (observations, infos)
+    def observation(self, obs):
+        if type(obs) is tuple:
+            observations, infos = obs
+        else:
+            observations = obs
+        for i in range(len(observations)):
+            observations[i] = re.sub(self.reGarbageChars, "", observations[i])
+            observations[i] = re.sub(self.reLocationTag, "", observations[i])            
+            observations[i] = " ".join(observations[i].split())
+        return (observations, infos) if type(obs) is tuple else observations
 
-class QAPairWrapper(gym.ObservationWrapper):
+class QAPairWrapper(gym.Wrapper):
     def __init__(self, env: gym.Env, config: SimpleNamespace):
         super().__init__(env)
         self.config = config
     
-    def observation(self, obs_and_infos):
-        observations, infos = obs_and_infos
+    def reset(self):
+        observations, infos = super().reset()
+        return self.append_questions(observations, infos)
+
+    def step(self, command):
+        observations, reward, done, infos = super().step(command)
+        new_observations, new_infos = self.append_questions(observations, infos)
+        return new_observations, reward, done, new_infos
+        
+    def append_questions(self, observations, infos):
         if 'questions' in infos:
             questions = infos['questions']
         else:
@@ -29,8 +49,8 @@ class QAPairWrapper(gym.ObservationWrapper):
             infos['questions'] = questions
             infos['answers'] = answers
             infos['reward_info'] = reward_info
-        observations = [obs + q for obs, q in zip(observations, questions)]
-        return observations, infos
+        new_observations = [obs + q for obs, q in zip(observations, questions)]
+        return new_observations, infos
     
 class RewardWrapper(gym.RewardWrapper):
     # Probably should just make this a Wrapper and override step, reset

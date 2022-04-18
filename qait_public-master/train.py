@@ -16,7 +16,7 @@ from distutils.dir_util import copy_tree
 import gym
 import textworld
 from textworld.gym import register_game, make_batch2
-from wrappers import PreprocessorWrapper
+from wrappers import PreprocessorWrapper, QAPairWrapper
 from agent import Agent
 from generic import GameBuffer
 import reward_helper
@@ -43,7 +43,7 @@ request_infos = textworld.EnvInfos(description=True,
 def create_games(config: SimpleNamespace, data_path: str):
     # Create temporary folder for the generated games.
     global GAMES_DIR
-    GAMES_DIR = tempfile.TemporaryDirectory(prefix="tw_games") # This is not deleted upon error. It would be better to use a with statement.
+    GAMES_DIR = tempfile.TemporaryDirectory(prefix="tw_games_") # This is not deleted upon error. It would be better to use a with statement.
     games_dir = os.path.join(GAMES_DIR.name, "") # So path ends with '/'.
 
     textworld_data_path = os.path.join(data_path, "textworld_data")
@@ -83,7 +83,7 @@ def train_2(config: SimpleNamespace, data_path: str, games: GameBuffer):
         env_id = make_batch2(env_ids, parallel=True)
         env = gym.make(env_id)
         env.seed(episode_no)
-        env = PreprocessorWrapper(env, config)
+        env = QAPairWrapper(PreprocessorWrapper(env, config), config)
         
         
         observations, infos = env.reset()
@@ -483,8 +483,6 @@ if __name__ == '__main__':
     try:
         game_gen = create_games(config, args.data_path)
         train_2(config, args.data_path, game_gen)
-    except:
-        pass
     finally:
         if GAMES_DIR:
             GAMES_DIR.cleanup()

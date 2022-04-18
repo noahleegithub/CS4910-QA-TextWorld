@@ -2,10 +2,12 @@ import numpy as np
 import random
 import uuid
 import os
+import subprocess
 import time
 import multiprocessing as mp
 from types import SimpleNamespace
 from os.path import join as pjoin
+import textworld
 
 with open("vocabularies/fake_words.txt") as f:
     FAKE_WORDS = f.read().lower().split("\n")
@@ -175,9 +177,7 @@ def generate_qa_pairs(infos, question_type="location", seed=42):
 
 ########################################################## game generator
 
-def generate_game_file(pnum, path="./", 
-    random_map=True, question_type="location", seed=None):
-     
+def generate_game_file(pnum, path="./", random_map=True, question_type="location", seed=None):
     rand = np.random.default_rng(seed)
     if seed is None:
         seed = rand.integers(100000000)
@@ -202,8 +202,9 @@ def generate_game_file(pnum, path="./",
             n_rooms, n_objects, map_seed, with_placeholders, "challenge.py",
             seed, game_file, os.path.join(path, "textworld_data")
         )
-    os.system(cmd)
+    subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     return game_file
+
 
 def generate_fixed_map_games(p_num, path="./", question_type="location", random_seed=None, num_object=None):
     if random_seed is None:
@@ -278,9 +279,9 @@ def game_generator_queue(path="./", random_map=False, question_type="location", 
                 try:
                     game_file_name = generate_game_file(pnum, path=path, random_map=random_map,
                         question_type=question_type, seed=seed)
-                except ValueError:
-                    continue
-                q.put(game_file_name)
+                    q.put(game_file_name)
+                except:
+                    break
             else:
                 time.sleep(wait_time)
             counter += 1

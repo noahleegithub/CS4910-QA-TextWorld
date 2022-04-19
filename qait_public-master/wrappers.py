@@ -201,13 +201,17 @@ class RewardWrapper(gym.Wrapper):
         rewards = np.zeros(len(self.discovered_facts))
         for i in range(len(rewards)):
             attr = infos['reward_info']['_attributes'][i]
+            entity = infos['reward_info']['_entities'][i]
             commands = self.command_history[i]
-            rewards[i] = self.compute_attribute_heuristic(attr, commands)
+            discovered_facts = self.discovered_facts[i]
+            rewards[i] = self.compute_attribute_heuristic(attr, entity, commands, discovered_facts)
         return rewards
 
-    def compute_attribute_heuristic(self, attribute, commands):
+    def compute_attribute_heuristic(self, attribute, entity, commands, facts):
         reward = 0.
         if attribute == "holder":
+            # if put, insert in commands
+            # 
             pass
         elif attribute == "portable":
             pass

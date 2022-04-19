@@ -119,10 +119,10 @@ def generate_attribute_question(entity_dict, seed=None):
         # return generate_attribute_question(entity_dict, seed)
 
     if rand.random() > 0.5:
-        answer = "1"
+        answer = 1
         entity_ = np.random.choice(entity_true)
     else:
-        answer = "0"
+        answer = 0
         entity_ = np.random.choice(entity_false)
 
     return attribute_to_question(random_attr, entity_), answer, random_attr, entity_
@@ -142,10 +142,10 @@ def generate_existence_question(entity_dict, seed=None):
 
     if rand.random() > 0.5:
         entity = rand.choice(entities_in_this_game)
-        return "is there any " + entity + " in the world ?", "1", entity
+        return "is there any " + entity + " in the world ?", 1, entity
     else:
         entity = rand.choice(entities_not_in_this_game)
-        return "is there any " + entity + " in the world ?", "0", entity
+        return "is there any " + entity + " in the world ?", 0, entity
 
 
 def generate_qa_pairs(infos, question_type="location", seed=42):

@@ -6,6 +6,7 @@ from gym.core import Wrapper
 import spacy
 import re
 import numpy as np
+import copy
 
 from game_generator import generate_qa_pairs
 
@@ -81,27 +82,37 @@ class RewardWrapper(gym.Wrapper):
             self.observation_history[i] = {}
             self.observation_history[i][" ".join(state)] = True
             self.init_facts[i] = set(infos['facts'][i])
+        self.discovered_facts = copy.deepcopy(self.init_facts)
         return states, infos
 
     def step(self, commands):
         states, rewards, done, infos = super().step(commands)
         rewards = np.array(rewards)
         rewards += self.reward_episodic_discovery(states, infos)
-        if self.config.general.question_type == "location":
-            rewards += self.reward_location(infos)
-        elif self.config.general.question_type == "existence":
-            rewards
-        elif self.config.general.question_type == "attribute":
-            rewards
-        else:
-            raise NotImplementedError
-        # episodic discovery reward: 1 for a new state
-        # Sufficient info bonus
-        # - Location: 1 if final state contains object, else 0
-        # - Existence: If answer is yes, use location bonus, else use exploration coverage bonus
+        if done:
+            if self.config.general.question_type == "location":
+                rewards += self.reward_location(infos)
+            elif self.config.general.question_type == "existence":
+                answers = np.array(infos['answers'])
+                coverage_rewards = self.reward_exploration_coverage(infos)
+                location_rewards = self.reward_location(infos)
+                rewards += np.where(answers == 1, location_rewards, coverage_rewards)
+            elif self.config.general.question_type == "attribute":
+                pass
+            else:
+                raise NotImplementedError
+        # Episodic Discovery reward: 1 for a new state, 0 for already seen state
+        # Sufficient Info bonus
+        # - Location: 1 if final state contains entity in question, else 0
+        # - Existence: If answer is yes/True/1, use location bonus, else use exploration coverage bonus
         # - Attribute: Heuristic bonus + 0.1 if entity was observed in any state + 0.1 exploration coverage bonus
+        
+        # Update observation histories
         for i, state in enumerate(states):
             self.observation_history[i][" ".join(state)] = True
+        # Update discovered facts
+        for i, facts in enumerate(infos['facts']):
+            self.discovered_facts[i] = self.discovered_facts[i].union(set(facts))
 
         return states, rewards, done, infos
 
@@ -125,10 +136,43 @@ class RewardWrapper(gym.Wrapper):
         return rewards
 
     def reward_exploration_coverage(self, infos):
+        rewards = np.zeros(len(self.init_facts))
         for i in range(len(self.init_facts)):
             game = Game.deserialize(infos['game'][i])
-            all_facts = set(game.world.facts)
-            current_facts = set(infos['facts'][i]) # rework this; should be union of all discovered facts
+            all_facts = game.world.facts
+            revealed_facts = self.discovered_facts[i]
             initial_facts = self.init_facts[i]
-        pass
+
+            all_containers = set([var 
+                                    for prop in all_facts
+                                        for var in prop.arguments
+                                            if var.type == "c"])
+            all_rooms = set([var 
+                                for prop in all_facts 
+                                    for var in prop.arguments 
+                                        if var.type == "r"])
+            opened_containers = set([var 
+                                        for prop in revealed_facts
+                                            for var in prop.arguments 
+                                                if var in all_containers and prop.name == "open"])
+            visited_rooms = set([var 
+                                    for prop in revealed_facts 
+                                        for var in prop.arguments 
+                                            if var in all_rooms and prop.name == "at" and prop.arguments[0].name == "P"])
+            init_opened_containers = set([var 
+                                            for prop in initial_facts 
+                                                for var in prop.arguments 
+                                                    if var in all_containers and prop.name == "open"])
+            init_visited_rooms = set([var 
+                                        for prop in initial_facts 
+                                            for var in prop.arguments 
+                                                if var in all_rooms and prop.name == "at" and prop.arguments[0].name == "P"])
+            needs_to_be_discovered = len(all_containers) + len(all_rooms) - len(init_opened_containers) - len(init_visited_rooms)
+            discovered = len(opened_containers) + len(visited_rooms) - len(init_opened_containers) - len(init_visited_rooms)
+            if needs_to_be_discovered == 0:
+                return 0.0
+            coverage = float(discovered) / float(needs_to_be_discovered)
+            assert coverage >= 0, "this shouldn't happen, the agent shouldn't be able to lose coverage info."
+            rewards[i] = coverage
+        return rewards
     

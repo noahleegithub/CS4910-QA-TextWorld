@@ -79,10 +79,12 @@ class RewardWrapper(gym.Wrapper):
         states, infos = super().reset()
         self.observation_history = {}
         self.init_facts = {}
+        self.command_history = {}
         for i, state in enumerate(states):
             self.observation_history[i] = {}
             self.observation_history[i][" ".join(state)] = True
             self.init_facts[i] = set(infos['facts'][i])
+            self.commmand_history[i] = []
         self.discovered_facts = copy.deepcopy(self.init_facts)
         return states, infos
 
@@ -90,7 +92,7 @@ class RewardWrapper(gym.Wrapper):
         states, rewards, done, infos = super().step(commands)
         rewards = np.array(rewards)
         rewards += self.reward_episodic_discovery(states, infos)
-        if done:
+        if done: # should change this to if command is "wait"
             if self.config.general.question_type == "location":
                 rewards += self.reward_location(infos)
             elif self.config.general.question_type == "existence":
@@ -99,7 +101,7 @@ class RewardWrapper(gym.Wrapper):
                 location_rewards = self.reward_location(infos)
                 rewards += np.where(answers == 1, location_rewards, coverage_rewards)
             elif self.config.general.question_type == "attribute":
-                rewards += 0 # Attribute heuristic reward
+                rewards += self.reward_attribute() # Attribute heuristic reward
                 rewards += 0.1 * self.reward_discovered_entity(infos)
                 rewards += 0.1 * self.reward_exploration_coverage(infos)
             else:
@@ -111,12 +113,16 @@ class RewardWrapper(gym.Wrapper):
         # - Attribute: Heuristic bonus + 0.1 if entity was observed in any state + 0.1 exploration coverage bonus
         
         # Update observation histories
-        for i, state in enumerate(states):
-            self.observation_history[i][" ".join(state)] = True
         # Update discovered facts
-        for i, facts in enumerate(infos['facts']):
+        # Update command histories
+        for i in range(len(states)):
+            state = states[i]
+            facts = infos['facts'][i]
+            command = commands[i]
+            self.observation_history[i][" ".join(state)] = True
             self.discovered_facts[i] = self.discovered_facts[i].union(set(facts))
-
+            self.command_history[i].append(command)
+        
         return states, rewards, done, infos
 
     def reward_episodic_discovery(self, states, infos):
@@ -131,7 +137,7 @@ class RewardWrapper(gym.Wrapper):
     def reward_location(self, infos):
         rewards = np.zeros(len(self.observation_history))
         for sample_idx, history in self.observation_history.items():
-            entity = infos['reward_info']["_entities"][sample_idx]
+            entity = infos['reward_info']['_entities'][sample_idx]
             if entity in list(history.keys())[-1]:
                 rewards[sample_idx] = 1.
             else:
@@ -141,7 +147,7 @@ class RewardWrapper(gym.Wrapper):
     def reward_discovered_entity(self, infos):
         rewards = np.zeros(len(self.observation_history))
         for sample_idx, history in self.observation_history.items():
-            entity = infos['reward_info']["_entities"][sample_idx]
+            entity = infos['reward_info']['_entities'][sample_idx]
             if entity in " ".join(list(history.keys())):
                 rewards[sample_idx] = 1.
             else:
@@ -189,6 +195,36 @@ class RewardWrapper(gym.Wrapper):
             rewards[i] = coverage
         return rewards
     
-    def reward_attribute(self):
+    def reward_attribute(self, infos):
+        # The paper implementation seems flawed. Why not just keep command history and check if the agent has performed
+        # the correct commands in the past?
         rewards = np.zeros(len(self.discovered_facts))
+        for i in range(len(rewards)):
+            attr = infos['reward_info']['_attributes'][i]
+            commands = self.command_history[i]
+            rewards[i] = self.compute_attribute_heuristic(attr, commands)
         return rewards
+
+    def compute_attribute_heuristic(self, attribute, commands):
+        reward = 0.
+        if attribute == "holder":
+            pass
+        elif attribute == "portable":
+            pass
+        elif attribute == "openable":
+            pass
+        elif attribute == "drinkable":
+            pass
+        elif attribute == "edible":
+            pass
+        elif attribute == "sharp":
+            pass
+        elif attribute == "heat_source":
+            pass
+        elif attribute == "cookable":
+            pass
+        elif attribute == "cuttable":
+            pass
+        else:
+            raise NotImplementedError
+        return reward

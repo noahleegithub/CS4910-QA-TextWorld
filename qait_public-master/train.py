@@ -89,15 +89,19 @@ def train_2(config: SimpleNamespace, data_path: str, games: GameBuffer):
         # Maybe wrappers to map tokens to indexes and then to embeddings?
         # TODO add in reward wrapper
 
-        observations, infos = env.reset()
-        print(observations)
-        obs, _, _, _ = env.step(['go south', 'open gate'])
-        print(obs)
-        obs, _, _, _ = env.step(['go south', 'go west'])
-        print(obs)
+        agent = Agent()
+
+        state, infos = env.reset() # state is List[(tokenized observation, tokenized question)] of length batch_size
+        print(state)
+        state, rewards, done, _ = env.step(['go south', 'open gate'])
+        print(state)
+        print(rewards, done)
+        state, rewards, done, _ = env.step(['go south', 'go west'])
+        print(state)
+        print(rewards, done)
         break
         for step_no in range(config.training.max_nb_steps_per_episode):
-            actions = select_actions(state) # list of strings of length batch_size
+            actions = agent.act(state, reward, done)
             next_state, reward, done, infos = env.step(actions) # modify to output rewards
             reward = torch.tensor([reward], device=device)
 
@@ -110,7 +114,8 @@ def train_2(config: SimpleNamespace, data_path: str, games: GameBuffer):
             state = next_state
 
             # Perform one step of the optimization (on the policy network)
-            optimize_model()
+            if step_no % config.replay.update_per_k_game_steps == 0:
+                optimize_model()
             if done:
                 episode_durations.append(t + 1)
                 plot_durations()
@@ -119,7 +124,6 @@ def train_2(config: SimpleNamespace, data_path: str, games: GameBuffer):
         if episode_no % config.training.target_net_update_frequency == 0:
             target_net.load_state_dict(policy_net.state_dict())
         
-        # TODO: make env a custom environment
         episode_no += 1
 
 def train(data_path):

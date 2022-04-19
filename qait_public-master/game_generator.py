@@ -279,7 +279,7 @@ def game_generator_queue(path="./", random_map=False, question_type="location", 
                         question_type=question_type, seed=seed)
                     q.put(game_file_name)
                 except:
-                    continue
+                    break
             else:
                 time.sleep(wait_time)
             counter += 1

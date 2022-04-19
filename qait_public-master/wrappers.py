@@ -67,11 +67,18 @@ class TokenizerWrapper(gym.ObservationWrapper):
         return (observations, infos) if type(obs) is tuple else observations
 
     
-class RewardWrapper(gym.RewardWrapper):
+class RewardWrapper(gym.Wrapper):
     # Probably should just make this a Wrapper and override step, reset
     def __init__(self, env):
         super().__init__(env)
     
-    def reward(self, rew):
-        # modify rew
-        return rew
+    def reset(self):
+        state, infos = super().reset()
+        return state, infos
+
+    def step(self, commands):
+        state, rewards, done, infos = super().step(commands)
+
+        # episodic discovery reward: 1 for a new state
+
+        return state, rewards, done, infos

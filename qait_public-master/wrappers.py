@@ -1,6 +1,7 @@
 from typing import Tuple, Any, Mapping, List
 from types import SimpleNamespace
 import gym
+from networkx.readwrite.graph6 import read_graph6
 from textworld import GameState, Game
 from gym.core import Wrapper
 import spacy
@@ -98,7 +99,9 @@ class RewardWrapper(gym.Wrapper):
                 location_rewards = self.reward_location(infos)
                 rewards += np.where(answers == 1, location_rewards, coverage_rewards)
             elif self.config.general.question_type == "attribute":
-                pass
+                rewards += 0 # Attribute heuristic reward
+                rewards += 0.1 * self.reward_discovered_entity(infos)
+                rewards += 0.1 * self.reward_exploration_coverage(infos)
             else:
                 raise NotImplementedError
         # Episodic Discovery reward: 1 for a new state, 0 for already seen state
@@ -130,6 +133,16 @@ class RewardWrapper(gym.Wrapper):
         for sample_idx, history in self.observation_history.items():
             entity = infos['reward_info']["_entities"][sample_idx]
             if entity in list(history.keys())[-1]:
+                rewards[sample_idx] = 1.
+            else:
+                rewards[sample_idx] = 0.
+        return rewards
+
+    def reward_discovered_entity(self, infos):
+        rewards = np.zeros(len(self.observation_history))
+        for sample_idx, history in self.observation_history.items():
+            entity = infos['reward_info']["_entities"][sample_idx]
+            if entity in " ".join(list(history.keys())):
                 rewards[sample_idx] = 1.
             else:
                 rewards[sample_idx] = 0.
@@ -167,12 +180,15 @@ class RewardWrapper(gym.Wrapper):
                                         for prop in initial_facts 
                                             for var in prop.arguments 
                                                 if var in all_rooms and prop.name == "at" and prop.arguments[0].name == "P"])
-            needs_to_be_discovered = len(all_containers) + len(all_rooms) - len(init_opened_containers) - len(init_visited_rooms)
+            discoverable = len(all_containers) + len(all_rooms) - len(init_opened_containers) - len(init_visited_rooms)
             discovered = len(opened_containers) + len(visited_rooms) - len(init_opened_containers) - len(init_visited_rooms)
-            if needs_to_be_discovered == 0:
+            if discoverable == 0:
                 return 0.0
-            coverage = float(discovered) / float(needs_to_be_discovered)
+            coverage = float(discovered) / float(discoverable)
             assert coverage >= 0, "this shouldn't happen, the agent shouldn't be able to lose coverage info."
             rewards[i] = coverage
         return rewards
     
+    def reward_attribute(self):
+        rewards = np.zeros(len(self.discovered_facts))
+        return rewards

@@ -93,6 +93,7 @@ def train_2(config: SimpleNamespace, data_path: str, games: GameBuffer):
 
         state, infos = env.reset() # state is List[(tokenized observation, tokenized question)] of length batch_size
         print(state)
+        print(infos['facts'])
         state, rewards, done, _ = env.step(['go south', 'open gate'])
         print(state)
         print(rewards, done)

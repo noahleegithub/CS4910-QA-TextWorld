@@ -26,6 +26,7 @@ class PreprocessorWrapper(gym.ObservationWrapper):
             observations[i] = re.sub(self.reGarbageChars, "", observations[i])
             observations[i] = re.sub(self.reLocationTag, "", observations[i])            
             observations[i] = " ".join(observations[i].split())
+            observations[i] = observations[i].lower()
         return (observations, infos) if type(obs) is tuple else observations
 
 class QAPairWrapper(gym.Wrapper):
@@ -79,51 +80,50 @@ class RewardWrapper(gym.Wrapper):
         states, infos = super().reset()
         self.observation_history = {}
         self.init_facts = {}
-        self.command_history = {}
         for i, state in enumerate(states):
             self.observation_history[i] = {}
             self.observation_history[i][" ".join(state)] = True
             self.init_facts[i] = set(infos['facts'][i])
-            self.commmand_history[i] = []
         self.discovered_facts = copy.deepcopy(self.init_facts)
         return states, infos
 
     def step(self, commands):
         states, rewards, done, infos = super().step(commands)
         rewards = np.array(rewards)
-        rewards += self.reward_episodic_discovery(states, infos)
-        if done: # should change this to if command is "wait"
-            if self.config.general.question_type == "location":
-                rewards += self.reward_location(infos)
-            elif self.config.general.question_type == "existence":
-                answers = np.array(infos['answers'])
-                coverage_rewards = self.reward_exploration_coverage(infos)
-                location_rewards = self.reward_location(infos)
-                rewards += np.where(answers == 1, location_rewards, coverage_rewards)
-            elif self.config.general.question_type == "attribute":
-                rewards += self.reward_attribute() # Attribute heuristic reward
-                rewards += 0.1 * self.reward_discovered_entity(infos)
-                rewards += 0.1 * self.reward_exploration_coverage(infos)
-            else:
-                raise NotImplementedError
-        # Episodic Discovery reward: 1 for a new state, 0 for already seen state
-        # Sufficient Info bonus
-        # - Location: 1 if final state contains entity in question, else 0
-        # - Existence: If answer is yes/True/1, use location bonus, else use exploration coverage bonus
-        # - Attribute: Heuristic bonus + 0.1 if entity was observed in any state + 0.1 exploration coverage bonus
         
+        # Episodic Discovery reward: 1 for a new feedback, 0 for already seen feedback
+        rewards += self.reward_episodic_discovery(states, infos)
+
         # Update observation histories
         # Update discovered facts
-        # Update command histories
         for i in range(len(states)):
             state = states[i]
             facts = infos['facts'][i]
-            command = commands[i]
             self.observation_history[i][" ".join(state)] = True
             self.discovered_facts[i] = self.discovered_facts[i].union(set(facts))
-            self.command_history[i].append(command)
+
+        # Sufficient Info Rewards
+        # - Location: 1 if feedback contains entity from question, else 0
+        # - Existence: If answer is 1, use location bonus, else use exploration coverage bonus
+        #   - Exploration coverage: float in [0,1] describing how many facts the player has discovered
+        # - Attribute: Heuristic bonus + 0.1 location bonus + 0.1 exploration coverage bonus
+        if self.config.general.question_type == "location":
+            rewards += self.reward_location(infos, states)
+            rewards += 0.1 * self.reward_exploration_coverage(infos)
+        elif self.config.general.question_type == "existence":
+            answers = np.array(infos['answers'])
+            location_rewards = self.reward_location(infos)
+            coverage_rewards = self.reward_exploration_coverage(infos)
+            rewards += np.where(answers == 1, location_rewards, coverage_rewards)
+        elif self.config.general.question_type == "attribute":
+            rewards += self.reward_attribute(infos, commands) # Attribute heuristic reward
+            rewards += 0.1 * self.reward_location(infos, states)
+            rewards += 0.1 * self.reward_exploration_coverage(infos)
+        else:
+            raise NotImplementedError
         
         return states, rewards, done, infos
+        
 
     def reward_episodic_discovery(self, states, infos):
         rewards = np.zeros(len(states))
@@ -134,24 +134,17 @@ class RewardWrapper(gym.Wrapper):
                 rewards[i] = 0.
         return rewards
 
-    def reward_location(self, infos):
-        rewards = np.zeros(len(self.observation_history))
-        for sample_idx, history in self.observation_history.items():
-            entity = infos['reward_info']['_entities'][sample_idx]
-            if entity in list(history.keys())[-1]:
-                rewards[sample_idx] = 1.
-            else:
-                rewards[sample_idx] = 0.
-        return rewards
-
-    def reward_discovered_entity(self, infos):
-        rewards = np.zeros(len(self.observation_history))
-        for sample_idx, history in self.observation_history.items():
-            entity = infos['reward_info']['_entities'][sample_idx]
-            if entity in " ".join(list(history.keys())):
-                rewards[sample_idx] = 1.
-            else:
-                rewards[sample_idx] = 0.
+    def reward_location(self, infos, states):
+        ''' Give a reward if the observation contains the entity
+        Args:
+            infos (dict): extra information from environment
+            states (List[Tuple[tokens, tokens]]): feedback and question from env
+        Returns: location bonus
+        '''
+        rewards = np.zeros(len(states))
+        for i in range(len(rewards)):
+            entity = infos['reward_info']['_entities'][i]
+            rewards[i] = 1. if entity in states[i][0] else 0.
         return rewards
 
     def reward_exploration_coverage(self, infos):
@@ -195,40 +188,55 @@ class RewardWrapper(gym.Wrapper):
             rewards[i] = coverage
         return rewards
     
-    def reward_attribute(self, infos):
-        # The paper implementation seems flawed. Why not just keep command history and check if the agent has performed
-        # the correct commands in the past?
-        rewards = np.zeros(len(self.discovered_facts))
+    def reward_attribute(self, infos, commands):
+        rewards = np.zeros(len(commands))
         for i in range(len(rewards)):
             attr = infos['reward_info']['_attributes'][i]
             entity = infos['reward_info']['_entities'][i]
-            commands = self.command_history[i]
-            discovered_facts = self.discovered_facts[i]
-            rewards[i] = self.compute_attribute_heuristic(attr, entity, commands, discovered_facts)
+            command = commands[i]
+            inventory = infos['inventory'][i]
+            rewards[i] = self.compute_attribute_heuristic(attr, entity, command, inventory, infos['facts'][i])
         return rewards
 
-    def compute_attribute_heuristic(self, attribute, entity, commands, facts):
+    def compute_attribute_heuristic(self, attribute, entity, command, inventory, facts):
         reward = 0.
+        correct_entity = 1. if entity in command else 0.
         if attribute == "holder":
-            # if put, insert in commands
-            # 
-            pass
+            if "put" in command or "insert" in command:
+                reward += 1.
+            if "take" in command:
+                reward += .5
         elif attribute == "portable":
-            pass
+            if "take" in command or "drop" in command:
+                reward += 1.
         elif attribute == "openable":
-            pass
+            if "open" in command or "close" in command:
+                reward += 1.
         elif attribute == "drinkable":
-            pass
+            if "drink" in command:
+                reward += 1.
+            if "take" in command:
+                reward += .5
         elif attribute == "edible":
-            pass
+            if "eat" in command:
+                reward += 1.
+            if "take" in command:
+                reward += .5
         elif attribute == "sharp":
-            pass
+            if "slice" in command or "chop" in command or "dice" in command:
+                reward += 1.
+            if "take" in command:
+                reward += .5
         elif attribute == "heat_source":
+            # TODO: incorporate facts
             pass
         elif attribute == "cookable":
-            pass
+            if "cook" in command:
+                reward += 1.
+            if "take" in command:
+                reward += 0.5
         elif attribute == "cuttable":
             pass
         else:
             raise NotImplementedError
-        return reward
+        return reward * correct_entity

@@ -72,14 +72,17 @@ class TokenizerWrapper(gym.ObservationWrapper):
         return (observations, infos) if type(obs) is tuple else observations
 
 class HandleAnswerWrapper(gym.Wrapper):
+    ''' Handle when agents choose "wait" command '''
     def __init__(self, env: gym.Env, config: SimpleNamespace):
         super().__init__(env)
         self.config = config
     
     def reset(self):
         observations, infos = super().reset()
+        self.ready_to_answer = np.array([False] * len(observations))
         return observations, infos
 
-    def step(self, command):
-        observations, reward, done, infos = super().step(command)
+    def step(self, commands):
+        observations, reward, done, infos = super().step(commands)
+        self.ready_to_answer = np.array([True if com == "wait" else False for com in commands])
         return observations, reward, done, infos

@@ -17,10 +17,10 @@ from distutils.dir_util import copy_tree
 import gym
 import textworld
 from textworld.gym import register_game, make_batch2
-from wrappers import PreprocessorWrapper, QAPairWrapper, TokenizerWrapper, RewardWrapper
+from wrappers import PreprocessorWrapper, QAPairWrapper, TokenizerWrapper
+from reward_helper import RewardWrapper
 from agent import Agent
 from generic import GameBuffer
-import reward_helper
 from game_generator import game_generator, game_generator_queue
 import evaluate
 from query import process_facts

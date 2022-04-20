@@ -82,14 +82,14 @@ class RewardWrapper(gym.Wrapper):
         self.init_facts = {}
         for i, state in enumerate(states):
             self.observation_history[i] = {}
-            self.observation_history[i][" ".join(state)] = True
+            self.observation_history[i][" ".join(state[0])] = True
             self.init_facts[i] = set(infos['facts'][i])
         self.discovered_facts = copy.deepcopy(self.init_facts)
         return states, infos
 
     def step(self, commands):
         states, rewards, done, infos = super().step(commands)
-        rewards = np.array(rewards)
+        rewards = np.array(rewards, dtype=float)
         
         # Episodic Discovery reward: 1 for a new feedback, 0 for already seen feedback
         rewards += self.reward_episodic_discovery(states, infos)
@@ -99,7 +99,7 @@ class RewardWrapper(gym.Wrapper):
         for i in range(len(states)):
             state = states[i]
             facts = infos['facts'][i]
-            self.observation_history[i][" ".join(state)] = True
+            self.observation_history[i][" ".join(state[0])] = True
             self.discovered_facts[i] = self.discovered_facts[i].union(set(facts))
 
         # Sufficient Info Rewards
@@ -126,9 +126,9 @@ class RewardWrapper(gym.Wrapper):
         
 
     def reward_episodic_discovery(self, states, infos):
-        rewards = np.zeros(len(states))
+        rewards = np.zeros(len(states), dtype=float)
         for i, state in enumerate(states):
-            if self.observation_history[i][" ".join(state)]:
+            if " ".join(state[0]) not in self.observation_history[i]:
                 rewards[i] = 1.
             else:
                 rewards[i] = 0.
@@ -141,14 +141,14 @@ class RewardWrapper(gym.Wrapper):
             states (List[Tuple[tokens, tokens]]): feedback and question from env
         Returns: location bonus
         '''
-        rewards = np.zeros(len(states))
+        rewards = np.zeros(len(states), dtype=float)
         for i in range(len(rewards)):
             entity = infos['reward_info']['_entities'][i]
             rewards[i] = 1. if entity in states[i][0] else 0.
         return rewards
 
     def reward_exploration_coverage(self, infos):
-        rewards = np.zeros(len(self.init_facts))
+        rewards = np.zeros(len(self.init_facts), dtype=float)
         for i in range(len(self.init_facts)):
             game = Game.deserialize(infos['game'][i])
             all_facts = game.world.facts
@@ -189,7 +189,7 @@ class RewardWrapper(gym.Wrapper):
         return rewards
     
     def reward_attribute(self, infos, commands):
-        rewards = np.zeros(len(commands))
+        rewards = np.zeros(len(commands), dtype=float)
         for i in range(len(rewards)):
             attr = infos['reward_info']['_attributes'][i]
             entity = infos['reward_info']['_entities'][i]

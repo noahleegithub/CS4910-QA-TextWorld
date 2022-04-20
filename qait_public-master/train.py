@@ -1,4 +1,5 @@
 import argparse
+from gym.core import RewardWrapper
 import yaml
 import datetime
 import os
@@ -16,7 +17,7 @@ from distutils.dir_util import copy_tree
 import gym
 import textworld
 from textworld.gym import register_game, make_batch2
-from wrappers import PreprocessorWrapper, QAPairWrapper, TokenizerWrapper
+from wrappers import PreprocessorWrapper, QAPairWrapper, TokenizerWrapper, RewardWrapper
 from agent import Agent
 from generic import GameBuffer
 import reward_helper
@@ -86,6 +87,7 @@ def train_2(config: SimpleNamespace, data_path: str, games: GameBuffer):
         env = PreprocessorWrapper(env)
         env = QAPairWrapper(env, config)
         env = TokenizerWrapper(env)
+        env = RewardWrapper(env, config)
         # Maybe wrappers to map tokens to indexes and then to embeddings?
         # TODO add in reward wrapper
 

@@ -1,4 +1,8 @@
 import textworld
+from typing import List, Tuple
+import numpy as np
+
+QAGameState = List[Tuple[List[str], List[str]]]
 
 class QAAgent(textworld.Agent):
     """ Interface for any agent that want to play a text-based game. """
@@ -10,35 +14,30 @@ class QAAgent(textworld.Agent):
         """
         pass
 
-    def act(self, game_state: textworld.GameState, reward: float, done: bool) -> str:
+    def act(self, game_states: QAGameState, reward: List[float], done: List[bool], infos: dict) -> str:
         """ Acts upon the current game state.
         Args:
-            game_state: Current game state.
-            reward: Accumulated reward up until now.
-            done: Whether the game is finished.
+            game_states: List of length batch_size, each entry is a tuple of the
+                        tokenized environment feedback and tokenized question.
+            rewards: List of length batch_size, accumulated rewards up until now.
+            done: List of length batch_size, whether the game is finished.
+            infos: Dictionary of game information, each value is a list of 
+                    length batch_size for each game in the batch.
         Returns:
-            Text command to be performed in this current state.
+            List of text commands to be performed in this current state for each
+            game in the batch.
         """
-        raise NotImplementedError()
+        raise NotImplementedError
 
-    def answer_question(self, input_quest, game_state: textworld.GameState):
-        """ Answer the question from the start of the game.
-        Args:
-            input_quest: the question to answer
-            game_state: the game state from the step right before asking the Agent the question.
-        Returns:
-            Text answer to the question.
-        """
-        raise NotImplementedError()
-
-
-    def finish(self, game_state: textworld.GameState, reward: float, done: bool) -> None:
+    def finish(self, game_states: QAGameState, reward: List[float], done: List[bool], infos: dict) -> None:
         """ Let the agent know the game has finished.
         Args:
-            game_state: Game state at the moment the game finished.
-            reward: Accumulated reward up until now.
-            done: Whether the game has finished normally or not.
-                If False, it means the agent's used up all of its actions.
+            game_states: List of length batch_size, each entry is a tuple of the
+                        tokenized environment feedback and tokenized question.
+            rewards: List of length batch_size, accumulated rewards up until now.
+            done: List of length batch_size, whether the game is finished.
+            infos: Dictionary of game information, each value is a list of 
+                    length batch_size for each game in the batch.
         """
         pass
 
@@ -71,48 +70,22 @@ class RandomAgent(QAAgent):
     """ Agent that randomly selects commands from the admissible ones. """
 
     def __init__(self, seed=1234):
-        self.seed = seed
-        self.rng = np.random.RandomState(self.seed)
+        self.rng = np.random.default_rng(seed)
 
-    def reset(self, env):
-        # Activate state tracking in order to get the admissible commands.
-        env.activate_state_tracking()
-        env.compute_intermediate_reward()  # Needed to detect if a game is lost.
-
-    def act(self, game_state, reward, done):
-        # print("Admissible actions: " + str(game_state.admissible_commands))
-        return self.rng.choice(game_state.admissible_commands)
-
-
-class WalkthroughDone(NameError):
-    pass
-
-
-class WalkthroughAgent(QAAgent):
-    """ Agent that simply follows a list of commands. """
-
-    def __init__(self, commands=None):
-        self.commands = commands
-
-    def reset(self, env):
-        env.activate_state_tracking()
-        env.display_command_during_render = True
-        if self.commands is not None:
-            self._commands = iter(self.commands)
-            return  # Commands already specified.
-
-        if not hasattr(env, "game"):
-            msg = "WalkthroughAgent is only supported for generated games."
-            raise NameError(msg)
-
-        # Load command from the generated game.
-        self._commands = iter(env.game.quests[0].commands)
-
-    def act(self, game_state, reward, done):
-        try:
-            action = next(self._commands)
-        except StopIteration:
-            raise WalkthroughDone()
-
-        action = action.strip()  # Remove trailing \n, if any.
-        return action
+    def act(self, game_states: QAGameState, reward: List[float], done: List[bool], infos: dict) -> str:
+        """ Acts upon the current game state.
+        Args:
+            game_states: List of length batch_size, each entry is a tuple of the
+                        tokenized environment feedback and tokenized question.
+            rewards: List of length batch_size, accumulated rewards up until now.
+            done: List of length batch_size, whether the game is finished.
+            infos: Dictionary of game information, each value is a list of 
+                    length batch_size for each game in the batch.
+        Returns:
+            List of text commands to be performed in this current state for each
+            game in the batch.
+        """
+        commands = []
+        for i in range(len(game_states)):
+            commands.append(self.rng.choice(infos['admissible_commands'][i]))
+        return commands

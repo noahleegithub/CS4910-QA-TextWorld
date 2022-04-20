@@ -69,7 +69,7 @@ class NaiveAgent(QAAgent):
 class RandomAgent(QAAgent):
     """ Agent that randomly selects commands from the admissible ones. """
 
-    def __init__(self, seed=1234):
+    def __init__(self, seed=None):
         self.rng = np.random.default_rng(seed)
 
     def act(self, game_states: QAGameState, reward: List[float], done: List[bool], infos: dict) -> str:

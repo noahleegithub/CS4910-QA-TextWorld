@@ -33,9 +33,6 @@ class QAPairWrapper(gym.Wrapper):
     def __init__(self, env: gym.Env, config: SimpleNamespace):
         super().__init__(env)
         self.config = config
-        self.questions = None
-        self.answers = None
-        self.reward_info = None
     
     def reset(self):
         observations, infos = super().reset()
@@ -92,7 +89,7 @@ class RewardWrapper(gym.Wrapper):
         rewards = np.array(rewards, dtype=float)
         
         # Episodic Discovery reward: 1 for a new feedback, 0 for already seen feedback
-        rewards += self.reward_episodic_discovery(states, infos)
+        #rewards += self.reward_episodic_discovery(states, infos)
 
         # Update observation histories
         # Update discovered facts
@@ -112,7 +109,7 @@ class RewardWrapper(gym.Wrapper):
             rewards += 0.1 * self.reward_exploration_coverage(infos)
         elif self.config.general.question_type == "existence":
             answers = np.array(infos['answers'])
-            location_rewards = self.reward_location(infos)
+            location_rewards = self.reward_location(infos, states)
             coverage_rewards = self.reward_exploration_coverage(infos)
             rewards += np.where(answers == 1, location_rewards, coverage_rewards)
         elif self.config.general.question_type == "attribute":
@@ -129,7 +126,7 @@ class RewardWrapper(gym.Wrapper):
         rewards = np.zeros(len(states), dtype=float)
         for i, state in enumerate(states):
             if " ".join(state[0]) not in self.observation_history[i]:
-                rewards[i] = 1.
+                rewards[i] = 1. 
             else:
                 rewards[i] = 0.
         return rewards
@@ -217,7 +214,7 @@ class RewardWrapper(gym.Wrapper):
                 and entity in command:
                 reward += 1.
         elif attribute == "openable":
-            if "open" in command or "close" in command \
+            if ("open" in command or "close" in command) \
                 and entity in command and entity in entities_in_room:
                 reward += 1.
         elif attribute == "drinkable":
@@ -233,7 +230,7 @@ class RewardWrapper(gym.Wrapper):
                 and entity in command and entity in entities_in_room:
                 reward += .5
         elif attribute == "sharp":
-            if "slice" in command or "chop" in command or "dice" in command \
+            if ("slice" in command or "chop" in command or "dice" in command) \
                 and entity in inventory:
                 reward += 1.
             if "take" in command \
@@ -249,7 +246,7 @@ class RewardWrapper(gym.Wrapper):
                 and entity in command and entity in entities_in_room:
                 reward += .5
         elif attribute == "cuttable":
-            if "slice" in command or "chop" in command or "dice" in command \
+            if ("slice" in command or "chop" in command or "dice" in command) \
                 and entity in command and entity in inventory:
                 reward += 1.
             if "take" in command \

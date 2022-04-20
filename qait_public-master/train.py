@@ -24,6 +24,7 @@ import reward_helper
 from game_generator import game_generator, game_generator_queue
 import evaluate
 from query import process_facts
+from baselines import RandomAgent
 
 request_infos = textworld.EnvInfos(description=True,
                                    inventory=True,
@@ -91,43 +92,39 @@ def train_2(config: SimpleNamespace, data_path: str, games: GameBuffer):
         # Maybe wrappers to map tokens to indexes and then to embeddings?
         # TODO add in reward wrapper
 
-        agent = Agent()
+        agent = RandomAgent()
 
-        state, infos = env.reset() # state is List[(tokenized observation, tokenized question)] of length batch_size
-        print(state)
-        print(infos['admissible_commands'])
-        state, rewards, done, infos = env.step(['go south', 'open gate'])
-        print(state)
-        print(rewards, done)
-        print(infos['admissible_commands'])
-        state, rewards, done, infos = env.step(['go south', 'go west'])
-        print(state)
-        print(rewards, done)
-        print(infos['admissible_commands'])
-        break
+        states, infos = env.reset() # state is List[(tokenized observation, tokenized question)] of length batch_size
+
+        cumulative_rewards = np.zeros(len(states), dtype=float)
+        done = np.array([False] * len(states))
         for step_no in range(config.training.max_nb_steps_per_episode):
-            actions = agent.act(state, reward, done, infos) # list of strings (batch_size)
-            next_state, reward, done, infos = env.step(actions) # modify to output rewards
-            reward = torch.tensor([reward], device=device)
+            print([(" ".join(state[0]), " ".join(state[1])) for state in states])
 
+            actions = agent.act(states, cumulative_rewards, done, infos) # list of strings (batch_size)
+            next_states, rewards, done, infos = env.step(actions) # modify to output rewards
+            print(actions)
+            print(rewards)
             # game is done if agent outputs 'wait'
 
             # Store the transition in memory
-            memory.push(state, action, next_state, reward)
+            # memory.push(state, action, next_state, reward)
 
             # Move to the next state
-            state = next_state
+            states = next_states
 
             # Perform one step of the optimization (on the policy network)
             if step_no % config.replay.update_per_k_game_steps == 0:
-                optimize_model()
-            if done:
-                episode_durations.append(t + 1)
-                plot_durations()
+                print("Optimize model")
+                # optimize_model()
+            if np.all(done):
+                # episode_durations.append(t + 1)
+                # plot_durations()
                 break
         # Update the target network, copying all weights and biases in DQN
         if episode_no % config.training.target_net_update_frequency == 0:
-            target_net.load_state_dict(policy_net.state_dict())
+            pass
+            # target_net.load_state_dict(policy_net.state_dict())
         
         episode_no += 1
 

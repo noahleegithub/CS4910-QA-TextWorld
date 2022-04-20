@@ -103,8 +103,9 @@ def train_2(config: SimpleNamespace, data_path: str, games: GameBuffer):
 
             actions = agent.act(states, cumulative_rewards, done, infos) # list of strings (batch_size)
             next_states, rewards, done, infos = env.step(actions) # modify to output rewards
+            cumulative_rewards += rewards
             print(actions)
-            print(rewards)
+            print(cumulative_rewards)
             # game is done if agent outputs 'wait'
 
             # Store the transition in memory

@@ -89,15 +89,9 @@ class RewardWrapper(gym.Wrapper):
         rewards = np.array(rewards, dtype=float)
         
         # Episodic Discovery reward: 1 for a new feedback, 0 for already seen feedback
-        #rewards += self.reward_episodic_discovery(states, infos)
+        rewards += self.reward_episodic_discovery(states, infos)
 
-        # Update observation histories
-        # Update discovered facts
-        for i in range(len(states)):
-            state = states[i]
-            facts = infos['facts'][i]
-            self.observation_history[i][" ".join(state[0])] = True
-            self.discovered_facts[i] = self.discovered_facts[i].union(set(facts))
+        
 
         # Sufficient Info Rewards
         # - Location: 1 if feedback contains entity from question, else 0
@@ -118,7 +112,15 @@ class RewardWrapper(gym.Wrapper):
             rewards += 0.1 * self.reward_exploration_coverage(infos)
         else:
             raise NotImplementedError
-        
+
+        # Update observation histories
+        # Update discovered facts
+        for i in range(len(states)):
+            state = states[i]
+            facts = infos['facts'][i]
+            self.observation_history[i][" ".join(state[0])] = True
+            self.discovered_facts[i] = self.discovered_facts[i].union(set(facts))
+
         return states, rewards, done, infos
         
 
@@ -141,47 +143,22 @@ class RewardWrapper(gym.Wrapper):
         rewards = np.zeros(len(states), dtype=float)
         for i in range(len(rewards)):
             entity = infos['reward_info']['_entities'][i]
-            rewards[i] = 1. if entity in states[i][0] else 0.
+            rewards[i] = 1. if entity in " ".join(states[i][0]) else 0.
         return rewards
 
     def reward_exploration_coverage(self, infos):
         rewards = np.zeros(len(self.init_facts), dtype=float)
         for i in range(len(self.init_facts)):
-            game = Game.deserialize(infos['game'][i])
-            all_facts = game.world.facts
-            revealed_facts = self.discovered_facts[i]
+            current_facts = set(infos['facts'][i])
+            discovered_facts = self.discovered_facts[i]
             initial_facts = self.init_facts[i]
-
-            all_containers = set([var 
-                                    for prop in all_facts
-                                        for var in prop.arguments
-                                            if var.type == "c"])
-            all_rooms = set([var 
-                                for prop in all_facts 
-                                    for var in prop.arguments 
-                                        if var.type == "r"])
-            opened_containers = set([var 
-                                        for prop in revealed_facts
-                                            for var in prop.arguments 
-                                                if var in all_containers and prop.name == "open"])
-            visited_rooms = set([var 
-                                    for prop in revealed_facts 
-                                        for var in prop.arguments 
-                                            if var in all_rooms and prop.name == "at" and prop.arguments[0].name == "P"])
-            init_opened_containers = set([var 
-                                            for prop in initial_facts 
-                                                for var in prop.arguments 
-                                                    if var in all_containers and prop.name == "open"])
-            init_visited_rooms = set([var 
-                                        for prop in initial_facts 
-                                            for var in prop.arguments 
-                                                if var in all_rooms and prop.name == "at" and prop.arguments[0].name == "P"])
-            discoverable = len(all_containers) + len(all_rooms) - len(init_opened_containers) - len(init_visited_rooms)
-            discovered = len(opened_containers) + len(visited_rooms) - len(init_opened_containers) - len(init_visited_rooms)
-            print(discoverable, discovered)
-            if discoverable == 0:
+            
+            new_facts = current_facts.difference(discovered_facts)
+            cumulative_new_facts = discovered_facts.difference(initial_facts)
+            
+            if len(cumulative_new_facts) == 0:
                 return 0.0
-            coverage = float(discovered) / float(discoverable)
+            coverage = len(new_facts) / float(len(cumulative_new_facts))
             assert coverage >= 0, "this shouldn't happen, the agent shouldn't be able to lose coverage info."
             rewards[i] = coverage
         return rewards
@@ -242,7 +219,7 @@ class RewardWrapper(gym.Wrapper):
                 reward += 1.
         elif attribute == "cookable":
             if "cook" in command and entity in command and entity in inventory:
-                reward += 1.
+                reward += .1
             if "take" in command \
                 and entity in command and entity in entities_in_room:
                 reward += .5

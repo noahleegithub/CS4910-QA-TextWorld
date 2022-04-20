@@ -93,16 +93,18 @@ def train_2(config: SimpleNamespace, data_path: str, games: GameBuffer):
 
         state, infos = env.reset() # state is List[(tokenized observation, tokenized question)] of length batch_size
         print(state)
-        print(infos['facts'])
-        state, rewards, done, _ = env.step(['go south', 'open gate'])
+        print(infos['admissible_commands'])
+        state, rewards, done, infos = env.step(['go south', 'open gate'])
         print(state)
         print(rewards, done)
-        state, rewards, done, _ = env.step(['go south', 'go west'])
+        print(infos['admissible_commands'])
+        state, rewards, done, infos = env.step(['go south', 'go west'])
         print(state)
         print(rewards, done)
+        print(infos['admissible_commands'])
         break
         for step_no in range(config.training.max_nb_steps_per_episode):
-            actions = agent.act(state, reward, done)
+            actions = agent.act(state, reward, done, infos) # list of strings (batch_size)
             next_state, reward, done, infos = env.step(actions) # modify to output rewards
             reward = torch.tensor([reward], device=device)
 

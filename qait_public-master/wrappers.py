@@ -194,49 +194,67 @@ class RewardWrapper(gym.Wrapper):
             attr = infos['reward_info']['_attributes'][i]
             entity = infos['reward_info']['_entities'][i]
             command = commands[i]
-            inventory = infos['inventory'][i]
-            rewards[i] = self.compute_attribute_heuristic(attr, entity, command, inventory, infos['facts'][i])
+            rewards[i] = self.compute_attribute_heuristic(attr, entity, command, 
+                infos['inventory'][i], infos['facts'][i])
         return rewards
 
     def compute_attribute_heuristic(self, attribute, entity, command, inventory, facts):
         reward = 0.
-        correct_entity = 1. if entity in command else 0.
+
+        for prop in facts:
+            if prop.name == "at" and prop.arguments[0].name == "P":
+                current_room = prop.arguments[1].name
+
+        entities_in_room = set([prop.arguments[0].name 
+                                    for prop in facts 
+                                        if prop.name == "at" and prop.arguments[1].name == current_room])
         if attribute == "holder":
-            if "put" in command or "insert" in command:
+            if ("put" in command or "insert" in command) \
+                and entity in command and entity in entities_in_room:
                 reward += 1.
-            if "take" in command:
-                reward += .5
         elif attribute == "portable":
-            if "take" in command or "drop" in command:
+            if ("take" in command or "drop" in command) \
+                and entity in command:
                 reward += 1.
         elif attribute == "openable":
-            if "open" in command or "close" in command:
+            if "open" in command or "close" in command \
+                and entity in command and entity in entities_in_room:
                 reward += 1.
         elif attribute == "drinkable":
-            if "drink" in command:
+            if "drink" in command and entity in command:
                 reward += 1.
-            if "take" in command:
+            if "take" in command \
+                and entity in command and entity in entities_in_room:
                 reward += .5
         elif attribute == "edible":
-            if "eat" in command:
+            if "eat" in command and entity in command:
                 reward += 1.
-            if "take" in command:
+            if "take" in command \
+                and entity in command and entity in entities_in_room:
                 reward += .5
         elif attribute == "sharp":
-            if "slice" in command or "chop" in command or "dice" in command:
+            if "slice" in command or "chop" in command or "dice" in command \
+                and entity in inventory:
                 reward += 1.
-            if "take" in command:
+            if "take" in command \
+                and entity in command and entity in entities_in_room:
                 reward += .5
         elif attribute == "heat_source":
-            # TODO: incorporate facts
-            pass
-        elif attribute == "cookable":
-            if "cook" in command:
+            if "cook" in command and entity in entities_in_room:
                 reward += 1.
-            if "take" in command:
-                reward += 0.5
+        elif attribute == "cookable":
+            if "cook" in command and entity in command and entity in inventory:
+                reward += 1.
+            if "take" in command \
+                and entity in command and entity in entities_in_room:
+                reward += .5
         elif attribute == "cuttable":
-            pass
+            if "slice" in command or "chop" in command or "dice" in command \
+                and entity in command and entity in inventory:
+                reward += 1.
+            if "take" in command \
+                and entity in command and entity in entities_in_room:
+                reward += .5
         else:
             raise NotImplementedError
-        return reward * correct_entity
+        return reward

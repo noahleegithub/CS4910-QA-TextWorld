@@ -188,7 +188,7 @@ def generate_game_file(pnum, path="./", random_map=True, question_type="location
         n_rooms = 6
         map_seed = 123
     n_objects = rand.integers(3 * n_rooms, 6 * n_rooms, endpoint=True)
-    with_placeholders = False # "--with-placeholders" if question_type == "attribute" else ""
+    with_placeholders = "" # "--with-placeholders" if question_type == "attribute" else ""
     
     config_list = map(str, [n_rooms, n_objects, map_seed, with_placeholders, seed])
     game_name = "game_{uid}{pnum}_config_{config}.ulx".format(

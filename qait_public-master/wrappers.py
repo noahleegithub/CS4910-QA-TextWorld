@@ -178,6 +178,7 @@ class RewardWrapper(gym.Wrapper):
                                                 if var in all_rooms and prop.name == "at" and prop.arguments[0].name == "P"])
             discoverable = len(all_containers) + len(all_rooms) - len(init_opened_containers) - len(init_visited_rooms)
             discovered = len(opened_containers) + len(visited_rooms) - len(init_opened_containers) - len(init_visited_rooms)
+            print(discoverable, discovered)
             if discoverable == 0:
                 return 0.0
             coverage = float(discovered) / float(discoverable)

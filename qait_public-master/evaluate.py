@@ -1,6 +1,6 @@
 import numpy as np
 import generic
-import reward_helper
+import reward_wrapper
 import copy
 import os
 import json

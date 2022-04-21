@@ -18,7 +18,7 @@ import gym
 import textworld
 from textworld.gym import register_game, make_batch2
 from wrappers import PreprocessorWrapper, QAPairWrapper, TokenizerWrapper, HandleAnswerWrapper
-from reward_helper import RewardWrapper
+from reward_wrapper import RewardWrapper
 from agent import Agent
 from generic import GameBuffer, Transition, ReplayMemory
 from game_generator import game_generator, game_generator_queue

@@ -20,7 +20,7 @@ from textworld.gym import register_game, make_batch2
 from wrappers import PreprocessorWrapper, QAPairWrapper, TokenizerWrapper, HandleAnswerWrapper
 from reward_helper import RewardWrapper
 from agent import Agent
-from generic import GameBuffer
+from generic import GameBuffer, Transition, ReplayMemory
 from game_generator import game_generator, game_generator_queue
 import evaluate
 from query import process_facts
@@ -73,6 +73,10 @@ def create_games(config: SimpleNamespace, data_path: str):
 
 def train_2(config: SimpleNamespace, data_path: str, games: GameBuffer):
     episode_no = 0
+    agent = RandomAgent()
+    target_net = None # Set this if using DQNs copy.deepcopy(agent)
+    memory = ReplayMemory(capacity=config.replay.replay_memory_capacity)
+
     print("Started training...")
     while episode_no < config.training.max_episode:
         rand = np.random.default_rng(episode_no)
@@ -85,16 +89,15 @@ def train_2(config: SimpleNamespace, data_path: str, games: GameBuffer):
         env_id = make_batch2(env_ids, parallel=True)
         env = gym.make(env_id)
         env.seed(episode_no)
+
         env = PreprocessorWrapper(env)
         env = QAPairWrapper(env, config)
         env = TokenizerWrapper(env)
         env = RewardWrapper(env, config)
         env = HandleAnswerWrapper(env)
-        # Maybe wrappers to map tokens to indexes and then to embeddings?
-        # TODO add in reward wrapper
 
-        agent = RandomAgent()
-
+        
+        agent.reset() # reset for the next game
         states, infos = env.reset() # state is List[(tokenized observation, tokenized question)] of length batch_size
 
         cumulative_rewards = np.zeros(len(states), dtype=float)
@@ -109,24 +112,35 @@ def train_2(config: SimpleNamespace, data_path: str, games: GameBuffer):
             print(done)
 
             # Store the transition in memory
-            #memory.push(state, action, next_state, reward)
+            for s_0, a, r, s_1 in zip(states, actions, rewards, next_states):
+                # dont push states from finished games
+                if len(s_0[0]) + len(s_0[1]) != 0:
+                    memory.push(Transition(s_0, a, r, s_1))
 
             states = next_states
 
             # Perform one step of the optimization (on the policy network)
             if step_no % config.replay.update_per_k_game_steps == 0:
-                pass
-                # optimize_model()
+                optimize_model(agent, memory)
             if np.all(done):
-                # episode_durations.append(t + 1)
-                # plot_durations()
+                # record some evaluation metrics?
                 break
+
         # Update the target network, copying all weights and biases in DQN
         if episode_no % config.training.target_net_update_frequency == 0:
-            pass
-            # target_net.load_state_dict(policy_net.state_dict())
+            if callable(getattr(agent, "update_target_net", None)):
+                agent.update_target_net()
+                # target_net.load_state_dict(policy_net.state_dict())
         
         episode_no += 1
+
+def optimize_model(agent, replay_memory):
+    ''' Just calls the agent's optimize method, if it exists
+    '''
+    if not callable(getattr(agent, "optimize_model", None)):
+        return
+    agent.optimize_model(replay_memory)
+    return
 
 def train(data_path):
 

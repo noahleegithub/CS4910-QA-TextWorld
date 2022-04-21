@@ -1,14 +1,13 @@
 import random
 import numpy as np
 from collections import namedtuple
-from generic import RingBuffer
 
 
 # a snapshot of state to be stored in replay memory
 qa_Transition = namedtuple('qa_Transition', ('observation_list', 'quest_list', 'answer_strings'))
 
 
-class PrioritizedReplayMemory(RingBuffer):
+class PrioritizedReplayMemory(object):
 
     def __init__(self, capacity=100000, priority_fraction=0.0):
         # prioritized replay memory
@@ -18,14 +17,6 @@ class PrioritizedReplayMemory(RingBuffer):
         self.alpha_memory, self.beta_memory = [], []
         self.alpha_position, self.beta_position = 0, 0
         self.alpha_rewards, self.beta_rewards = [], []
-
-    def __init__(self, capacity=100000, priority_fraction=0.0) -> None:
-        super().__init__(capacity=capacity)
-        self.priority_fraction = priority_fraction
-        self.alpha_capacity = int(capacity * priority_fraction)
-        self.beta_capacity = capacity - self.alpha_capacity
-        self.alpha_memory = RingBuffer(self.alpha_capacity)
-        self.beta_memory = RingBuffer(self.beta_capacity)
 
     def push(self, is_prior=False, reward=0.0, *args):
         """Saves a transition."""

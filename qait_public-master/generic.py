@@ -7,6 +7,7 @@ import os
 import time
 import multiprocessing as mp
 from os.path import join as pjoin
+from collections import namedtuple
 missing_words = set()
 
 
@@ -173,6 +174,13 @@ class GameBuffer(RingBuffer):
             game = self.generator.get()
             assert(os.path.exists(game))
             self.push(game)
+
+class ReplayMemory(RingBuffer):
+
+    def sample(self, n_samples=1):
+        return random.sample(self.data, n_samples)
+
+Transition = namedtuple('Transition', ('state', 'action', 'reward', 'next_state'))
 
 class HistoryScoreCache(object):
 

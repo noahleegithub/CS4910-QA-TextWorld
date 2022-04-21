@@ -74,7 +74,7 @@ def generate_location_question(entity_dict, seed=None):
         locations.append(loc)
     
     idx = rand.integers(low=0, high=len(entities))
-    return "where is the " + entities[idx] + " ?", locations[idx], entities[idx]
+    return "where is the " + entities[idx] + " ?", locations[idx], entities[idx], locations
 
 
 def generate_attribute_question(entity_dict, seed=None):
@@ -120,13 +120,13 @@ def generate_attribute_question(entity_dict, seed=None):
         # return generate_attribute_question(entity_dict, seed)
 
     if rand.random() > 0.5:
-        answer = 1
+        answer = "yes"
         entity_ = np.random.choice(entity_true)
     else:
-        answer = 0
+        answer = "no"
         entity_ = np.random.choice(entity_false)
 
-    return attribute_to_question(random_attr, entity_), answer, random_attr, entity_
+    return attribute_to_question(random_attr, entity_), answer, random_attr, entity_, ["no", "yes"]
 
 
 def generate_existence_question(entity_dict, seed=None):
@@ -143,10 +143,10 @@ def generate_existence_question(entity_dict, seed=None):
 
     if rand.random() > 0.5:
         entity = rand.choice(entities_in_this_game)
-        return "is there any " + entity + " in the world ?", 1, entity
+        return "is there any " + entity + " in the world ?", "yes", entity, ["no", "yes"]
     else:
         entity = rand.choice(entities_not_in_this_game)
-        return "is there any " + entity + " in the world ?", 0, entity
+        return "is there any " + entity + " in the world ?", "no", entity, ["no", "yes"]
 
 
 def generate_qa_pairs(infos, question_type="location", seed=42):
@@ -155,21 +155,23 @@ def generate_qa_pairs(infos, question_type="location", seed=42):
     reward_helper_info = {'batch_size': batch_size,
                           '_entities': [],
                           '_answers': [],
-                          '_attributes': []}
+                          '_attributes': [],
+                          '_all_answers': []}
     for i in range(batch_size):
         if question_type == "location":
-            _q, _a, _e = generate_location_question(infos['extra.object_locations'][i], seed=seed*batch_size+i)
+            _q, _a, _e, _all_a = generate_location_question(infos['extra.object_locations'][i], seed=seed*batch_size+i)
         elif question_type == "attribute":
-            _q, _a, _attr, _e = generate_attribute_question(infos['extra.object_attributes'][i], seed=seed*batch_size+i)
+            _q, _a, _attr, _e, _all_a = generate_attribute_question(infos['extra.object_attributes'][i], seed=seed*batch_size+i)
             reward_helper_info['_attributes'].append(_attr)
         elif question_type == "existence":
-            _q, _a, _e = generate_existence_question(infos['extra.object_locations'][i], seed=seed*batch_size+i)
+            _q, _a, _e, _all_a = generate_existence_question(infos['extra.object_locations'][i], seed=seed*batch_size+i)
         else:
             raise NotImplementedError
         output_questions.append(_q)
         output_answers.append(_a)
-        reward_helper_info["_entities"].append(_e)  # the entity being asked
-        reward_helper_info["_answers"].append(_a)  # the entity being asked
+        reward_helper_info['_entities'].append(_e)  # the entity being asked
+        reward_helper_info['_answers'].append(_a)  # the entity being asked
+        reward_helper_info['_all_answers'].append(_all_a)
 
     return output_questions, output_answers, reward_helper_info
 

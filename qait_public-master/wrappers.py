@@ -67,22 +67,34 @@ class TokenizerWrapper(gym.ObservationWrapper):
             tokenized_feedback.insert(0, "[START]")
             tokenized_question.insert(0, "[START]")
             tokenized_feedback.append("[END]")
-            tokenized_feedback.append("[END]")
+            tokenized_question.append("[END]")
             observations[i] = (tokenized_feedback, tokenized_question)
         return (observations, infos) if type(obs) is tuple else observations
 
 class HandleAnswerWrapper(gym.Wrapper):
     ''' Handle when agents choose "wait" command '''
-    def __init__(self, env: gym.Env, config: SimpleNamespace):
+    def __init__(self, env: gym.Env):
         super().__init__(env)
-        self.config = config
     
     def reset(self):
         observations, infos = super().reset()
         self.ready_to_answer = np.array([False] * len(observations))
+        self.finished = np.array([False] * len(observations))
         return observations, infos
 
     def step(self, commands):
-        observations, reward, done, infos = super().step(commands)
+        observations, rewards, done, infos = super().step(commands)
+        # Was ready to answer at the previous timestep, now the command is the answer
+        for idx, game_ready in enumerate(self.ready_to_answer):
+            if game_ready:
+                observations[idx] = (None, None) # or ([], [])?
+                answer = commands[idx]
+                rewards[idx] = 100 if answer == infos['answers'][idx] else 0
+                self.finished[idx] = True
         self.ready_to_answer = np.array([True if com == "wait" else False for com in commands])
-        return observations, reward, done, infos
+        # Only return the question
+        for idx, game_ready in enumerate(self.ready_to_answer):
+            if game_ready:
+                observations[idx] = ([], observations[idx][1])
+                infos['admissible_commands'][idx] = infos['reward_info']['_all_answers'][idx]
+        return observations, rewards, self.finished, infos

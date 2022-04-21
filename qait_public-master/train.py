@@ -17,7 +17,7 @@ from distutils.dir_util import copy_tree
 import gym
 import textworld
 from textworld.gym import register_game, make_batch2
-from wrappers import PreprocessorWrapper, QAPairWrapper, TokenizerWrapper
+from wrappers import PreprocessorWrapper, QAPairWrapper, TokenizerWrapper, HandleAnswerWrapper
 from reward_helper import RewardWrapper
 from agent import Agent
 from generic import GameBuffer
@@ -89,6 +89,7 @@ def train_2(config: SimpleNamespace, data_path: str, games: GameBuffer):
         env = QAPairWrapper(env, config)
         env = TokenizerWrapper(env)
         env = RewardWrapper(env, config)
+        env = HandleAnswerWrapper(env)
         # Maybe wrappers to map tokens to indexes and then to embeddings?
         # TODO add in reward wrapper
 
@@ -105,12 +106,11 @@ def train_2(config: SimpleNamespace, data_path: str, games: GameBuffer):
             cumulative_rewards += rewards
             print(actions)
             print(cumulative_rewards)
-            # game is done if agent outputs 'wait'
+            print(done)
 
             # Store the transition in memory
             # memory.push(state, action, next_state, reward)
 
-            # Move to the next state
             states = next_states
 
             # Perform one step of the optimization (on the policy network)

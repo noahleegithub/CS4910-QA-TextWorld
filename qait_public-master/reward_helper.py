@@ -40,7 +40,7 @@ class RewardWrapper(gym.Wrapper):
             answers = np.array(infos['answers'])
             location_rewards = self.reward_location(infos, states)
             coverage_rewards = self.reward_exploration_coverage(infos)
-            rewards += np.where(answers == 1, location_rewards, coverage_rewards)
+            rewards += np.where(answers == "yes", location_rewards, coverage_rewards)
         elif self.config.general.question_type == "attribute":
             rewards += self.reward_attribute(infos, commands) # Attribute heuristic reward
             rewards += 0.1 * self.reward_location(infos, states)
@@ -93,7 +93,7 @@ class RewardWrapper(gym.Wrapper):
             
             if len(cumulative_new_facts) == 0:
                 return 0.0
-            coverage = len(new_facts) / float(len(cumulative_new_facts))
+            coverage = len(new_facts) # / float(len(cumulative_new_facts))
             assert coverage >= 0, "this shouldn't happen, the agent shouldn't be able to lose coverage info."
             rewards[i] = coverage
         return rewards

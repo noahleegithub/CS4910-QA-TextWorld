@@ -97,7 +97,7 @@ def train_2(config: SimpleNamespace, data_path: str, games: GameBuffer):
         env = HandleAnswerWrapper(env)
 
         
-        agent.reset() # reset for the next game
+        agent.reset(env) # reset for the next game
         states, infos = env.reset() # state is List[(tokenized observation, tokenized question)] of length batch_size
 
         cumulative_rewards = np.zeros(len(states), dtype=float)

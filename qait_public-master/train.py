@@ -93,7 +93,7 @@ def train_2(config: SimpleNamespace, data_path: str, games: GameBuffer):
         # Maybe wrappers to map tokens to indexes and then to embeddings?
         # TODO add in reward wrapper
 
-        agent = HumanAgent()
+        agent = RandomAgent()
 
         states, infos = env.reset() # state is List[(tokenized observation, tokenized question)] of length batch_size
 
@@ -109,7 +109,7 @@ def train_2(config: SimpleNamespace, data_path: str, games: GameBuffer):
             print(done)
 
             # Store the transition in memory
-            # memory.push(state, action, next_state, reward)
+            #memory.push(state, action, next_state, reward)
 
             states = next_states
 

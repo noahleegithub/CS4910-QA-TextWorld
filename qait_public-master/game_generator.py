@@ -74,7 +74,7 @@ def generate_location_question(entity_dict, seed=None):
         locations.append(loc)
     
     idx = rand.integers(low=0, high=len(entities))
-    return "where is the " + entities[idx] + " ?", locations[idx], entities[idx], locations
+    return "where is the " + entities[idx] + " ?", locations[idx], entities[idx], list(set(locations))
 
 
 def generate_attribute_question(entity_dict, seed=None):

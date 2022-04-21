@@ -84,17 +84,23 @@ class HandleAnswerWrapper(gym.Wrapper):
 
     def step(self, commands):
         observations, rewards, done, infos = super().step(commands)
-        # Was ready to answer at the previous timestep, now the command is the answer
-        for idx, game_ready in enumerate(self.ready_to_answer):
-            if game_ready:
-                observations[idx] = (None, None) # or ([], [])?
-                answer = commands[idx]
-                rewards[idx] = 100 if answer == infos['answers'][idx] else 0
-                self.finished[idx] = True
-        self.ready_to_answer = np.array([True if com == "wait" else False for com in commands])
-        # Only return the question
-        for idx, game_ready in enumerate(self.ready_to_answer):
-            if game_ready:
-                observations[idx] = ([], observations[idx][1])
-                infos['admissible_commands'][idx] = infos['reward_info']['_all_answers'][idx]
+        for i in range(len(observations)):
+            if self.finished[i]:
+                observations[i] = ([], [])
+                rewards[i] = 0.
+                infos['admissible_commands'][i] = ["wait"]
+                continue
+            elif self.ready_to_answer[i]:
+                observations[i] = ([], [])
+                rewards[i] = self.config.rewards.correct_answer if commands[i] == infos['answers'][i] else 0
+                self.finished[i] = True
+                infos['admissible_commands'][i] = ["wait"]
+                continue
+            elif commands[i] == "wait":
+                self.ready_to_answer[i] = True
+                observations[i] = ([], observations[i][1])
+                infos['admissible_commands'][i] = infos['reward_info']['_all_answers'][i]
+            else:
+                pass
+        
         return observations, rewards, self.finished, infos

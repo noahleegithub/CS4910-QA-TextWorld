@@ -2,7 +2,7 @@ general:
   train_data_size: 1  #-1 means unlimited games, where games are generated on the fly. In paper we use [1, 2, 10, 100, 500, -1], feel free to use any number.
   testset_path: "test_set"
   random_map: True  # If True, map size is sampled from [2, 12], if False, then map size is fixed to be 6.
-  question_type: "existence"  # location, existence, attribute
+  question_type: "attribute"  # location, existence, attribute
   random_seed: 42  # the secret of deep learning.
   naozi_capacity: 1  # agent keeps this many history observations. In paper we do not use a size larger than 1, i.e., we do not keep history. Feel free to play with it, tho.
   use_cuda: True  # disable this when running on machine without cuda
@@ -55,6 +55,13 @@ epsilon_greedy:
   epsilon_anneal_episodes: 100000  # -1 if not annealing
   epsilon_anneal_from: 1.0
   epsilon_anneal_to: 0.1
+
+rewards:
+  episodic_discovery: 0.5
+  location: 1.0
+  fact_finding: 1.0
+  attribute: 1.0
+  correct_answer: 10.0
 
 valid_command_bonus_lambda: 0.  # give reward when a generated command is in TextWorld's provided admissible command list. Note we don't use this in the paper.
 

@@ -149,7 +149,9 @@ def generate_existence_question(entity_dict, seed=None):
         return "is there any " + entity + " in the world ?", "no", entity, ["no", "yes"]
 
 
-def generate_qa_pairs(infos, question_type="location", seed=42):
+def generate_qa_pairs(infos, question_type="location", seed=None):
+    if seed is None:
+        seed = np.random.randint(100000)
     batch_size = len(infos['extra.object_locations'])
     output_questions, output_answers = [], []
     reward_helper_info = {'batch_size': batch_size,

@@ -113,3 +113,26 @@ class HumanAgent(QAAgent):
             print(infos['admissible_commands'][i])
             commands.append(input("> "))
         return commands
+    
+ 
+class NaiveCNAgent(QAAgent):
+        
+    def act(self, game_states: QAGameState, reward: List[float], done: List[bool], infos: dict) -> str:
+        """ Acts upon the current game state.
+        Args:
+            game_states: List of length batch_size, each entry is a tuple of the
+                        tokenized environment feedback and tokenized question.
+            rewards: List of length batch_size, accumulated rewards up until now.
+            done: List of length batch_size, whether the game is finished.
+            infos: Dictionary of game information, each value is a list of 
+                    length batch_size for each game in the batch.
+        Returns:
+            List of text commands to be performed in this current state for each
+            game in the batch.
+        """
+        commands = []
+        for i in range(len(game_states)):
+            game_state = game_states[i]
+            action = infos['admissible_commands'][i][np.argmax(map(lambda x: conceptnet.similarity_score(game_state, x), infos['admissible_commands'][i]))]
+            commands.append(action)
+        return commands

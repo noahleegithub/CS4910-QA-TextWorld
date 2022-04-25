@@ -14,7 +14,7 @@ class QAAgent(textworld.Agent):
         """
         pass
 
-    def act(self, game_states: QAGameState, reward: List[float], done: List[bool], infos: dict) -> str:
+    def act(self, max_steps, game_states: QAGameState, reward: List[float], done: List[bool], infos: dict) -> str:
         """ Acts upon the current game state.
         Args:
             game_states: List of length batch_size, each entry is a tuple of the
@@ -116,8 +116,7 @@ class HumanAgent(QAAgent):
     
  
 class NaiveCNAgent(QAAgent):
-        
-    def act(self, game_states: QAGameState, reward: List[float], done: List[bool], infos: dict) -> str:
+    def act(self, max_steps, game_states: QAGameState, reward: List[float], done: List[bool], infos: dict) -> str:
         """ Acts upon the current game state.
         Args:
             game_states: List of length batch_size, each entry is a tuple of the
@@ -131,6 +130,8 @@ class NaiveCNAgent(QAAgent):
             game in the batch.
         """
         commands = []
+        if infos['moves'][i] >= max_steps:
+            commands.append("wait")
         for i in range(len(game_states)):
             game_state = game_states[i]
             action = infos['admissible_commands'][i][np.argmax(map(lambda x: conceptnet.similarity_score(game_state, x), infos['admissible_commands'][i]))]

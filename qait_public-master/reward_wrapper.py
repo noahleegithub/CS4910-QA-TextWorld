@@ -31,14 +31,17 @@ class RewardWrapper(gym.Wrapper):
         # - Attribute: Heuristic bonus + 0.1 location bonus + 0.1 exploration coverage bonus
         if self.config.general.question_type == "location":
             rewards += self.reward_location(infos, states)
+            infos['reward_info']['sufficient_info_correct'] = rewards > 0
             rewards += 0.1 * self.reward_fact_finding()
         elif self.config.general.question_type == "existence":
             answers = np.array(infos['answers'])
             location_rewards = self.reward_location(infos, states)
             coverage_rewards = self.reward_fact_finding()
             rewards += np.where(answers == "yes", location_rewards, coverage_rewards)
+            infos['reward_info']['sufficient_info_correct'] = rewards > 0
         elif self.config.general.question_type == "attribute":
             rewards += self.reward_attribute(infos, commands) # Attribute heuristic reward
+            infos['reward_info']['sufficient_info_correct'] = rewards > 0
             rewards += 0.1 * self.reward_location(infos, states)
             rewards += 0.1 * self.reward_fact_finding()
         else:
@@ -46,6 +49,9 @@ class RewardWrapper(gym.Wrapper):
 
         # Only give the reward if the agent is about to answer
         rewards *= np.array([1 if c == "wait" else 0 for c in commands])
+        for i, c in enumerate(commands):
+            if c != "wait":
+                infos['reward_info']['sufficient_info_correct'][i] = False
 
         # Episodic Discovery reward: 1 for a new feedback, 0 for already seen feedback
         rewards += self.reward_episodic_discovery(states, infos)

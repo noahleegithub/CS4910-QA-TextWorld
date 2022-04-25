@@ -80,6 +80,8 @@ class HandleAnswerWrapper(gym.Wrapper):
         observations, infos = super().reset()
         self.ready_to_answer = np.array([False] * len(observations))
         self.finished = np.array([False] * len(observations))
+        self.sufficient_info_correct = np.array([False] * len(observations))
+        self.qa_correct = np.array([False] * len(observations))
         return observations, infos
 
     def step(self, commands):
@@ -94,13 +96,20 @@ class HandleAnswerWrapper(gym.Wrapper):
                 observations[i] = ([], [])
                 rewards[i] = self.config.rewards.correct_answer if commands[i] == infos['answers'][i] else 0
                 self.finished[i] = True
+                self.qa_correct[i] = rewards[i] > 0
                 infos['admissible_commands'][i] = ["wait"]
                 continue
             elif commands[i] == "wait":
                 self.ready_to_answer[i] = True
                 observations[i] = ([], observations[i][1])
                 infos['admissible_commands'][i] = infos['reward_info']['_all_answers'][i]
+                self.sufficient_info_correct[i] = infos['reward_info']['sufficient_info_correct'][i]
             else:
                 pass
+        
+        infos['results'] = {
+            'qa_correct': self.qa_correct, 
+            'suff_info_correct': self.sufficient_info_correct
+        }
         
         return observations, rewards, self.finished, infos

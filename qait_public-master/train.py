@@ -66,7 +66,7 @@ def create_games(config: SimpleNamespace, data_path: str):
         max_q_size=config.training.batch_size * 2, nb_worker=1)
     
     fixed_buffer = True if config.general.train_data_size != -1 else False
-    buffer_capacity =  config.general.train_data_size if fixed_buffer else config.training.batch_size * 5
+    buffer_capacity =  config.general.train_data_size if fixed_buffer else config.training.batch_size * 2
     training_game_buffer = GameBuffer(buffer_capacity, fixed_buffer, training_game_queue)
 
     return training_game_buffer
@@ -126,6 +126,8 @@ def train_2(config: SimpleNamespace, data_path: str, games: GameBuffer):
                 # record some evaluation metrics?
                 break
 
+        print(infos['results'])
+        
         # Update the target network, copying all weights and biases in DQN
         if episode_no % config.training.target_net_update_frequency == 0:
             if callable(getattr(agent, "update_target_net", None)):

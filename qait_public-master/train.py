@@ -24,7 +24,7 @@ from generic import GameBuffer, Transition, ReplayMemory
 from game_generator import game_generator, game_generator_queue
 import evaluate
 from query import process_facts
-from baselines import RandomAgent, HumanAgent
+from baselines import RandomAgent, HumanAgent, NaiveCNAgent
 
 request_infos = textworld.EnvInfos(description=True,
                                    inventory=True,
@@ -73,7 +73,7 @@ def create_games(config: SimpleNamespace, data_path: str):
 
 def train_2(config: SimpleNamespace, data_path: str, games: GameBuffer):
     episode_no = 0
-    agent = RandomAgent()
+    agent = NaiveCNAgent()
     target_net = None # Set this if using DQNs copy.deepcopy(agent)
     memory = ReplayMemory(capacity=config.replay.replay_memory_capacity)
 
@@ -104,7 +104,7 @@ def train_2(config: SimpleNamespace, data_path: str, games: GameBuffer):
         done = np.array([False] * len(states))
         for step_no in range(config.training.max_nb_steps_per_episode):
 
-            actions = agent.act(states, cumulative_rewards, done, infos) # list of strings (batch_size)
+            actions = agent.act(50, states, cumulative_rewards, done, infos) # list of strings (batch_size)
             next_states, rewards, done, infos = env.step(actions) # modify to output rewards
             cumulative_rewards += rewards
             print(actions)

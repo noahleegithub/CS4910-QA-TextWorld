@@ -130,7 +130,7 @@ class NaiveCNAgent(QAAgent):
             game in the batch.
         """
         commands = []
-        if infos['moves'][i] <= max_steps:
+        if infos['moves'][i] >= max_steps:
             commands.append("wait")
         for i in range(len(game_states)):
             game_state = game_states[i]

@@ -16,7 +16,7 @@ training:
   qa_loss_lambda: 1.0
   interaction_loss_lambda: 1.0
   optimizer:
-    step_rule: 'adam'  # adam
+    step_rule: 'AdamW'  # adam
     learning_rate: 0.00025
     clip_grad_norm: 5
 

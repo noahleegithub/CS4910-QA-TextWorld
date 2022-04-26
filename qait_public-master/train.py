@@ -39,6 +39,7 @@ request_infos = textworld.EnvInfos(description=True,
                                    last_action=True,
                                    game=True,
                                    admissible_commands=True,
+                                   command_templates=True,
                                    extras=["object_locations", "object_attributes", "uuid"])
 
 
@@ -121,7 +122,8 @@ def train_2(config: SimpleNamespace, data_path: str, games: GameBuffer):
 
             # Perform one step of the optimization (on the policy network)
             if step_no % config.replay.update_per_k_game_steps == 0:
-                optimize_model(agent, memory)
+                if callable(getattr(agent, "optimize_model", None)):
+                    agent.optimize_model(memory)
             if np.all(done):
                 # record some evaluation metrics?
                 break
@@ -135,14 +137,6 @@ def train_2(config: SimpleNamespace, data_path: str, games: GameBuffer):
                 # target_net.load_state_dict(policy_net.state_dict())
         
         episode_no += 1
-
-def optimize_model(agent, replay_memory):
-    ''' Just calls the agent's optimize method, if it exists
-    '''
-    if not callable(getattr(agent, "optimize_model", None)):
-        return
-    agent.optimize_model(replay_memory)
-    return
 
 def train(data_path):
 

@@ -5,6 +5,7 @@ import yaml
 import copy
 from collections import namedtuple
 from os.path import join as pjoin
+import h5py
 
 import spacy
 import numpy as np
@@ -30,7 +31,11 @@ class DQNAgent(nn.Module, QAAgent):
         self.config = config
         self.device = torch.device("cuda" if self.config.general.use_cuda and torch.cuda.is_available() else "cpu")
         
-        self.policy_net = DQN(config=self.config,
+        self.fasttext = h5py.File('crawl-300d-2M.vec.h5', 'r')
+        self.id2word = [str(b) for b in self.fasttext['words_flatten'][0].split(b'\n')]
+        self.word2id = {word: idx for idx, word in enumerate(self.id2word)}
+        
+        self.policy_net = DQN(config,
                               word_vocab=self.word_vocab,
                               char_vocab=self.char_vocab,
                               answer_type=self.answer_type)
@@ -46,6 +51,7 @@ class DQNAgent(nn.Module, QAAgent):
         self.optimizer = torch.optim.AdamW(self.online_net.parameters(), 
             lr=self.config.training.optimizer.learning_rate)
 
+        
 
     def train(self):
         self.policy_net.train()
@@ -92,8 +98,21 @@ class DQNAgent(nn.Module, QAAgent):
             game in the batch.
         """
 
+        game_states_ids = self.words_to_ids(game_states)
+
+
         pass
 
+    def words_to_ids(self, data):
+        if isinstance(data, str):
+            return self.word2id.get(data)
+        elif isinstance(data, list) or isinstance(data, tuple):
+            result = []
+            for item in data:
+                res = self.words_to_ids(item)
+                if res is not None: result.append(res)
+            return result
+        return data
    
 
     def optimize_model(self, replay_memory: ReplayMemory):
@@ -110,7 +129,7 @@ class DQNAgent(nn.Module, QAAgent):
         # Compute Q(s_t, a) - the model computes Q(s_t), then we select the
         # columns of actions taken. These are the actions which would've been taken
         # for each batch state according to policy_net
-        state_action_values = self.policy_net(state_batch).gather(1, action_batch)
+        state_action_values = self.policy_net(state_batch, action_batch)
 
         # Compute V(s_{t+1}) for all next states.
         # Expected values of actions for non_final_next_states are computed based

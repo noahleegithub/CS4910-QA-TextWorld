@@ -19,12 +19,15 @@ import textworld
 from textworld.gym import register_game, make_batch2
 from wrappers import PreprocessorWrapper, QAPairWrapper, TokenizerWrapper, HandleAnswerWrapper
 from reward_wrapper import RewardWrapper
-from agent import DQNAgent
+from agent import Agent
 from generic import GameBuffer, Transition, ReplayMemory
 from game_generator import game_generator, game_generator_queue
 import evaluate
 from query import process_facts
 from baselines import RandomAgent, HumanAgent, NaiveCNAgent
+
+from tqdm import tqdm
+import time
 
 request_infos = textworld.EnvInfos(description=True,
                                    inventory=True,
@@ -39,7 +42,6 @@ request_infos = textworld.EnvInfos(description=True,
                                    last_action=True,
                                    game=True,
                                    admissible_commands=True,
-                                   command_templates=True,
                                    extras=["object_locations", "object_attributes", "uuid"])
 
 
@@ -77,67 +79,86 @@ def train_2(config: SimpleNamespace, data_path: str, games: GameBuffer):
     agent = RandomAgent()
     target_net = None # Set this if using DQNs copy.deepcopy(agent)
     memory = ReplayMemory(capacity=config.replay.replay_memory_capacity)
+    f = open('results.txt','w')
+  
 
     print("Started training...")
-    while episode_no < config.training.max_episode:
-        rand = np.random.default_rng(episode_no)
-        games.poll()
-        if len(games) == 0:
-            time.sleep(0.1)
-            continue
-        sampled_games = np.random.choice(games, config.training.batch_size).tolist()
-        env_ids = [register_game(gamefile, request_infos=request_infos) for gamefile in sampled_games]
-        env_id = make_batch2(env_ids, parallel=True)
-        env = gym.make(env_id)
-        env.seed(episode_no)
+    # while episode_no < config.training.max_episode:
+    try: 
+      for i in tqdm(range(config.training.max_episode)):
+          rand = np.random.default_rng(episode_no)
+          games.poll()
+          if len(games) == 0:
+              time.sleep(0.1)
+              continue
+          sampled_games = np.random.choice(games, config.training.batch_size).tolist()
+          env_ids = [register_game(gamefile, request_infos=request_infos) for gamefile in sampled_games]
+          env_id = make_batch2(env_ids, parallel=True)
+          env = gym.make(env_id)
+          env.seed(episode_no)
 
-        env = PreprocessorWrapper(env)
-        env = QAPairWrapper(env, config)
-        env = TokenizerWrapper(env)
-        env = RewardWrapper(env, config)
-        env = HandleAnswerWrapper(env)
+          env = PreprocessorWrapper(env)
+          env = QAPairWrapper(env, config)
+          env = TokenizerWrapper(env)
+          env = RewardWrapper(env, config)
+          env = HandleAnswerWrapper(env)
 
+          
+          agent.reset(env) # reset for the next game
+          states, infos = env.reset() # state is List[(tokenized observation, tokenized question)] of length batch_size
         
-        agent.reset(env) # reset for the next game
-        states, infos = env.reset() # state is List[(tokenized observation, tokenized question)] of length batch_size
-        print(infos['command_templates'])
-        cumulative_rewards = np.zeros(len(states), dtype=float)
-        done = np.array([False] * len(states))
-        for step_no in range(config.training.max_nb_steps_per_episode):
+          cumulative_rewards = np.zeros(len(states), dtype=float)
+          done = np.array([False] * len(states))
+          for step_no in range(config.training.max_nb_steps_per_episode):
 
-            actions = agent.act(states, cumulative_rewards, done, infos) # list of strings (batch_size)
-            next_states, rewards, done, infos = env.step(actions) # modify to output rewards
-            cumulative_rewards += rewards
-            print(actions)
-            print(cumulative_rewards)
-            print(done)
+              # actions = agent.act(50, states, cumulative_rewards, done, infos) # list of strings (batch_size)
+              actions = agent.act(states, cumulative_rewards, done, infos) # list of strings (batch_size)
+              next_states, rewards, done, infos = env.step(actions) # modify to output rewards
+              cumulative_rewards += rewards
+              print(actions)
+              print(cumulative_rewards)
+              print(done)
 
-            # Store the transition in memory
-            for s_0, a, r, s_1 in zip(states, actions, rewards, next_states):
-                # dont push states from finished games
-                if len(s_0[0]) + len(s_0[1]) != 0:
-                    memory.push(Transition(s_0, a, r, s_1))
+              # Store the transition in memory
+              for s_0, a, r, s_1 in zip(states, actions, rewards, next_states):
+                  # dont push states from finished games
+                  if len(s_0[0]) + len(s_0[1]) != 0:
+                      memory.push(Transition(s_0, a, r, s_1))
 
-            states = next_states
+              states = next_states
 
-            # Perform one step of the optimization (on the policy network)
-            if step_no % config.replay.update_per_k_game_steps == 0:
-                if callable(getattr(agent, "optimize_model", None)):
-                    agent.optimize_model(memory)
-            if np.all(done):
-                # record some evaluation metrics?
-                break
+              # Perform one step of the optimization (on the policy network)
+              if step_no % config.replay.update_per_k_game_steps == 0:
+                  optimize_model(agent, memory)
+              if np.all(done):
+                  # record some evaluation metrics?
+                  break
+          infos['results']['cumulative_rewards_mean'] = 0
+          for val in cumulative_rewards:
+            infos['results']['cumulative_rewards_mean'] += val
+          infos['results']['cumulative_rewards_mean'] /= len(cumulative_rewards)
+          print(infos['results'])
+          f.write(str(infos['results']))
+          f.write("\n")
+          # Update the target network, copying all weights and biases in DQN
+          if episode_no % config.training.target_net_update_frequency == 0:
+              if callable(getattr(agent, "update_target_net", None)):
+                  agent.update_target_net()
+                  # target_net.load_state_dict(policy_net.state_dict())
+          # episode_no += 1
+          env.close()
+      f.close()
+    except: 
+      print('EXCEPTION')
+      f.close()
 
-        print(infos['results'])
-        
-        # Update the target network, copying all weights and biases in DQN
-        if episode_no % config.training.target_net_update_frequency == 0:
-            if callable(getattr(agent, "update_target_net", None)):
-                agent.update_target_net()
-                # target_net.load_state_dict(policy_net.state_dict())
-        
-        episode_no += 1
-        env.close()
+def optimize_model(agent, replay_memory):
+    ''' Just calls the agent's optimize method, if it exists
+    '''
+    if not callable(getattr(agent, "optimize_model", None)):
+        return
+    agent.optimize_model(replay_memory)
+    return
 
 def train(data_path):
 

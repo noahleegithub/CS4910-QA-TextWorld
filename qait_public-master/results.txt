@@ -1,0 +1,143 @@
+{'qa_correct': array([False, False]), 'suff_info_correct': array([ True,  True]), 'cumulative_rewards_mean': 6.166666666666666}
+{'qa_correct': array([ True,  True]), 'suff_info_correct': array([False, False]), 'cumulative_rewards_mean': 13.5}
+{'qa_correct': array([False,  True]), 'suff_info_correct': array([False,  True]), 'cumulative_rewards_mean': 9.375}
+{'qa_correct': array([False,  True]), 'suff_info_correct': array([False, False]), 'cumulative_rewards_mean': 13.0}
+{'qa_correct': array([False, False]), 'suff_info_correct': array([False,  True]), 'cumulative_rewards_mean': 9.0}
+{'qa_correct': array([ True,  True]), 'suff_info_correct': array([ True,  True]), 'cumulative_rewards_mean': 17.281954887218042}
+{'qa_correct': array([False,  True]), 'suff_info_correct': array([False,  True]), 'cumulative_rewards_mean': 8.6875}
+{'qa_correct': array([False,  True]), 'suff_info_correct': array([False, False]), 'cumulative_rewards_mean': 11.75}
+{'qa_correct': array([False, False]), 'suff_info_correct': array([ True, False]), 'cumulative_rewards_mean': 5.205882352941177}
+{'qa_correct': array([False, False]), 'suff_info_correct': array([False, False]), 'cumulative_rewards_mean': 5.25}
+{'qa_correct': array([False, False]), 'suff_info_correct': array([ True, False]), 'cumulative_rewards_mean': 2.125}
+{'qa_correct': array([ True, False]), 'suff_info_correct': array([ True, False]), 'cumulative_rewards_mean': 11.6875}
+{'qa_correct': array([False, False]), 'suff_info_correct': array([False, False]), 'cumulative_rewards_mean': 1.0}
+{'qa_correct': array([False,  True]), 'suff_info_correct': array([False,  True]), 'cumulative_rewards_mean': 12.53125}
+{'qa_correct': array([ True,  True]), 'suff_info_correct': array([ True, False]), 'cumulative_rewards_mean': 15.05}
+{'qa_correct': array([False,  True]), 'suff_info_correct': array([ True,  True]), 'cumulative_rewards_mean': 11.833333333333332}
+{'qa_correct': array([ True, False]), 'suff_info_correct': array([ True, False]), 'cumulative_rewards_mean': 9.3}
+{'qa_correct': array([False, False]), 'suff_info_correct': array([ True,  True]), 'cumulative_rewards_mean': 3.75}
+{'qa_correct': array([ True, False]), 'suff_info_correct': array([False,  True]), 'cumulative_rewards_mean': 7.958333333333334}
+{'qa_correct': array([False,  True]), 'suff_info_correct': array([False,  True]), 'cumulative_rewards_mean': 10.6}
+{'qa_correct': array([ True, False]), 'suff_info_correct': array([ True,  True]), 'cumulative_rewards_mean': 16.883074935400515}
+{'qa_correct': array([False,  True]), 'suff_info_correct': array([ True,  True]), 'cumulative_rewards_mean': 11.329831932773109}
+{'qa_correct': array([False, False]), 'suff_info_correct': array([ True, False]), 'cumulative_rewards_mean': 5.184210526315789}
+{'qa_correct': array([False, False]), 'suff_info_correct': array([False, False]), 'cumulative_rewards_mean': 2.5}
+{'qa_correct': array([ True, False]), 'suff_info_correct': array([ True,  True]), 'cumulative_rewards_mean': 14.7375}
+{'qa_correct': array([False, False]), 'suff_info_correct': array([ True,  True]), 'cumulative_rewards_mean': 6.9605263157894735}
+{'qa_correct': array([False,  True]), 'suff_info_correct': array([False, False]), 'cumulative_rewards_mean': 12.75}
+{'qa_correct': array([ True, False]), 'suff_info_correct': array([ True, False]), 'cumulative_rewards_mean': 12.943181818181818}
+{'qa_correct': array([ True,  True]), 'suff_info_correct': array([ True,  True]), 'cumulative_rewards_mean': 13.785714285714285}
+{'qa_correct': array([ True, False]), 'suff_info_correct': array([False, False]), 'cumulative_rewards_mean': 9.25}
+{'qa_correct': array([False, False]), 'suff_info_correct': array([False, False]), 'cumulative_rewards_mean': 14.0}
+{'qa_correct': array([False, False]), 'suff_info_correct': array([False, False]), 'cumulative_rewards_mean': 2.5}
+{'qa_correct': array([False,  True]), 'suff_info_correct': array([ True,  True]), 'cumulative_rewards_mean': 10.714285714285715}
+{'qa_correct': array([False,  True]), 'suff_info_correct': array([False, False]), 'cumulative_rewards_mean': 10.5}
+{'qa_correct': array([False, False]), 'suff_info_correct': array([False, False]), 'cumulative_rewards_mean': 13.5}
+{'qa_correct': array([False,  True]), 'suff_info_correct': array([False,  True]), 'cumulative_rewards_mean': 8.25}
+{'qa_correct': array([ True,  True]), 'suff_info_correct': array([ True,  True]), 'cumulative_rewards_mean': 15.872727272727273}
+{'qa_correct': array([ True, False]), 'suff_info_correct': array([False, False]), 'cumulative_rewards_mean': 9.5}
+{'qa_correct': array([False,  True]), 'suff_info_correct': array([ True, False]), 'cumulative_rewards_mean': 16.40909090909091}
+{'qa_correct': array([False,  True]), 'suff_info_correct': array([ True,  True]), 'cumulative_rewards_mean': 10.554945054945055}
+{'qa_correct': array([False, False]), 'suff_info_correct': array([False,  True]), 'cumulative_rewards_mean': 5.75}
+{'qa_correct': array([False,  True]), 'suff_info_correct': array([False,  True]), 'cumulative_rewards_mean': 12.916666666666666}
+{'qa_correct': array([False, False]), 'suff_info_correct': array([ True,  True]), 'cumulative_rewards_mean': 6.148148148148148}
+{'qa_correct': array([False,  True]), 'suff_info_correct': array([False, False]), 'cumulative_rewards_mean': 12.5}
+{'qa_correct': array([ True, False]), 'suff_info_correct': array([False, False]), 'cumulative_rewards_mean': 10.0}
+{'qa_correct': array([False, False]), 'suff_info_correct': array([ True, False]), 'cumulative_rewards_mean': 9.270833333333332}
+{'qa_correct': array([False, False]), 'suff_info_correct': array([False,  True]), 'cumulative_rewards_mean': 6.375}
+{'qa_correct': array([ True,  True]), 'suff_info_correct': array([ True, False]), 'cumulative_rewards_mean': 18.6875}
+{'qa_correct': array([ True,  True]), 'suff_info_correct': array([False,  True]), 'cumulative_rewards_mean': 15.5625}
+{'qa_correct': array([ True, False]), 'suff_info_correct': array([False, False]), 'cumulative_rewards_mean': 13.75}
+{'qa_correct': array([ True, False]), 'suff_info_correct': array([ True,  True]), 'cumulative_rewards_mean': 14.261904761904763}
+{'qa_correct': array([False,  True]), 'suff_info_correct': array([ True, False]), 'cumulative_rewards_mean': 15.181818181818182}
+{'qa_correct': array([False, False]), 'suff_info_correct': array([False,  True]), 'cumulative_rewards_mean': 5.416666666666666}
+{'qa_correct': array([False, False]), 'suff_info_correct': array([ True, False]), 'cumulative_rewards_mean': 8.983333333333334}
+{'qa_correct': array([ True, False]), 'suff_info_correct': array([ True, False]), 'cumulative_rewards_mean': 7.125}
+{'qa_correct': array([False,  True]), 'suff_info_correct': array([False, False]), 'cumulative_rewards_mean': 11.0}
+{'qa_correct': array([False, False]), 'suff_info_correct': array([False,  True]), 'cumulative_rewards_mean': 7.2}
+{'qa_correct': array([ True, False]), 'suff_info_correct': array([False,  True]), 'cumulative_rewards_mean': 13.238095238095237}
+{'qa_correct': array([ True,  True]), 'suff_info_correct': array([ True, False]), 'cumulative_rewards_mean': 12.9}
+{'qa_correct': array([False, False]), 'suff_info_correct': array([ True,  True]), 'cumulative_rewards_mean': 10.775}
+{'qa_correct': array([ True,  True]), 'suff_info_correct': array([ True, False]), 'cumulative_rewards_mean': 16.05952380952381}
+{'qa_correct': array([ True,  True]), 'suff_info_correct': array([False,  True]), 'cumulative_rewards_mean': 16.0}
+{'qa_correct': array([False,  True]), 'suff_info_correct': array([ True, False]), 'cumulative_rewards_mean': 7.9375}
+{'qa_correct': array([ True,  True]), 'suff_info_correct': array([ True, False]), 'cumulative_rewards_mean': 17.485294117647058}
+{'qa_correct': array([False, False]), 'suff_info_correct': array([False, False]), 'cumulative_rewards_mean': 13.25}
+{'qa_correct': array([ True,  True]), 'suff_info_correct': array([False, False]), 'cumulative_rewards_mean': 12.25}
+{'qa_correct': array([ True,  True]), 'suff_info_correct': array([False, False]), 'cumulative_rewards_mean': 20.25}
+{'qa_correct': array([ True,  True]), 'suff_info_correct': array([ True,  True]), 'cumulative_rewards_mean': 18.28968253968254}
+{'qa_correct': array([False,  True]), 'suff_info_correct': array([ True,  True]), 'cumulative_rewards_mean': 17.125}
+{'qa_correct': array([ True,  True]), 'suff_info_correct': array([False, False]), 'cumulative_rewards_mean': 19.75}
+{'qa_correct': array([ True,  True]), 'suff_info_correct': array([False,  True]), 'cumulative_rewards_mean': 16.45}
+{'qa_correct': array([ True,  True]), 'suff_info_correct': array([False, False]), 'cumulative_rewards_mean': 21.75}
+{'qa_correct': array([ True, False]), 'suff_info_correct': array([False,  True]), 'cumulative_rewards_mean': 6.583333333333333}
+{'qa_correct': array([False,  True]), 'suff_info_correct': array([False, False]), 'cumulative_rewards_mean': 10.25}
+{'qa_correct': array([False,  True]), 'suff_info_correct': array([False,  True]), 'cumulative_rewards_mean': 15.035714285714285}
+{'qa_correct': array([ True, False]), 'suff_info_correct': array([False,  True]), 'cumulative_rewards_mean': 15.46875}
+{'qa_correct': array([False,  True]), 'suff_info_correct': array([False, False]), 'cumulative_rewards_mean': 7.75}
+{'qa_correct': array([ True,  True]), 'suff_info_correct': array([False,  True]), 'cumulative_rewards_mean': 14.916666666666668}
+{'qa_correct': array([False,  True]), 'suff_info_correct': array([ True, False]), 'cumulative_rewards_mean': 7.607142857142858}
+{'qa_correct': array([False, False]), 'suff_info_correct': array([ True,  True]), 'cumulative_rewards_mean': 6.75}
+{'qa_correct': array([ True, False]), 'suff_info_correct': array([ True, False]), 'cumulative_rewards_mean': 17.035714285714285}
+{'qa_correct': array([ True,  True]), 'suff_info_correct': array([False,  True]), 'cumulative_rewards_mean': 13.568181818181818}
+{'qa_correct': array([False, False]), 'suff_info_correct': array([False, False]), 'cumulative_rewards_mean': 4.0}
+{'qa_correct': array([ True, False]), 'suff_info_correct': array([False,  True]), 'cumulative_rewards_mean': 17.936046511627907}
+{'qa_correct': array([False,  True]), 'suff_info_correct': array([ True,  True]), 'cumulative_rewards_mean': 12.31547619047619}
+{'qa_correct': array([False,  True]), 'suff_info_correct': array([ True, False]), 'cumulative_rewards_mean': 10.0}
+{'qa_correct': array([ True,  True]), 'suff_info_correct': array([ True, False]), 'cumulative_rewards_mean': 18.17857142857143}
+{'qa_correct': array([ True,  True]), 'suff_info_correct': array([False, False]), 'cumulative_rewards_mean': 18.75}
+{'qa_correct': array([ True,  True]), 'suff_info_correct': array([False, False]), 'cumulative_rewards_mean': 18.25}
+{'qa_correct': array([ True,  True]), 'suff_info_correct': array([False, False]), 'cumulative_rewards_mean': 12.25}
+{'qa_correct': array([False,  True]), 'suff_info_correct': array([False,  True]), 'cumulative_rewards_mean': 6.666666666666667}
+{'qa_correct': array([False, False]), 'suff_info_correct': array([False, False]), 'cumulative_rewards_mean': 7.5}
+{'qa_correct': array([False, False]), 'suff_info_correct': array([ True, False]), 'cumulative_rewards_mean': 4.5}
+{'qa_correct': array([ True,  True]), 'suff_info_correct': array([False, False]), 'cumulative_rewards_mean': 12.25}
+{'qa_correct': array([ True, False]), 'suff_info_correct': array([False, False]), 'cumulative_rewards_mean': 10.75}
+{'qa_correct': array([ True,  True]), 'suff_info_correct': array([ True,  True]), 'cumulative_rewards_mean': 15.75}
+{'qa_correct': array([False, False]), 'suff_info_correct': array([False, False]), 'cumulative_rewards_mean': 12.0}
+{'qa_correct': array([ True,  True]), 'suff_info_correct': array([ True,  True]), 'cumulative_rewards_mean': 17.888257575757578}
+{'qa_correct': array([False, False]), 'suff_info_correct': array([ True, False]), 'cumulative_rewards_mean': 5.777777777777778}
+{'qa_correct': array([ True,  True]), 'suff_info_correct': array([ True, False]), 'cumulative_rewards_mean': 17.09375}
+{'qa_correct': array([ True, False]), 'suff_info_correct': array([ True, False]), 'cumulative_rewards_mean': 10.4}
+{'qa_correct': array([False, False]), 'suff_info_correct': array([False,  True]), 'cumulative_rewards_mean': 5.096153846153847}
+{'qa_correct': array([ True,  True]), 'suff_info_correct': array([ True, False]), 'cumulative_rewards_mean': 16.25}
+{'qa_correct': array([ True,  True]), 'suff_info_correct': array([ True, False]), 'cumulative_rewards_mean': 18.34375}
+{'qa_correct': array([False, False]), 'suff_info_correct': array([ True, False]), 'cumulative_rewards_mean': 7.51}
+{'qa_correct': array([False, False]), 'suff_info_correct': array([False,  True]), 'cumulative_rewards_mean': 3.55}
+{'qa_correct': array([ True,  True]), 'suff_info_correct': array([False, False]), 'cumulative_rewards_mean': 14.0}
+{'qa_correct': array([ True, False]), 'suff_info_correct': array([ True, False]), 'cumulative_rewards_mean': 8.071428571428571}
+{'qa_correct': array([ True,  True]), 'suff_info_correct': array([False,  True]), 'cumulative_rewards_mean': 17.734375}
+{'qa_correct': array([ True,  True]), 'suff_info_correct': array([ True,  True]), 'cumulative_rewards_mean': 17.964285714285715}
+{'qa_correct': array([False,  True]), 'suff_info_correct': array([ True,  True]), 'cumulative_rewards_mean': 7.416666666666666}
+{'qa_correct': array([False,  True]), 'suff_info_correct': array([ True, False]), 'cumulative_rewards_mean': 13.464285714285715}
+{'qa_correct': array([ True, False]), 'suff_info_correct': array([False, False]), 'cumulative_rewards_mean': 9.0}
+{'qa_correct': array([False, False]), 'suff_info_correct': array([ True, False]), 'cumulative_rewards_mean': 7.291666666666667}
+{'qa_correct': array([False, False]), 'suff_info_correct': array([ True,  True]), 'cumulative_rewards_mean': 4.375}
+{'qa_correct': array([False,  True]), 'suff_info_correct': array([ True,  True]), 'cumulative_rewards_mean': 12.535714285714285}
+{'qa_correct': array([False,  True]), 'suff_info_correct': array([False,  True]), 'cumulative_rewards_mean': 10.833333333333332}
+{'qa_correct': array([False,  True]), 'suff_info_correct': array([False,  True]), 'cumulative_rewards_mean': 7.9}
+{'qa_correct': array([ True,  True]), 'suff_info_correct': array([ True,  True]), 'cumulative_rewards_mean': 19.05357142857143}
+{'qa_correct': array([False,  True]), 'suff_info_correct': array([ True,  True]), 'cumulative_rewards_mean': 19.754433497536944}
+{'qa_correct': array([False, False]), 'suff_info_correct': array([ True, False]), 'cumulative_rewards_mean': 10.222222222222221}
+{'qa_correct': array([False,  True]), 'suff_info_correct': array([False, False]), 'cumulative_rewards_mean': 13.0}
+{'qa_correct': array([ True,  True]), 'suff_info_correct': array([False,  True]), 'cumulative_rewards_mean': 13.9375}
+{'qa_correct': array([ True, False]), 'suff_info_correct': array([ True,  True]), 'cumulative_rewards_mean': 10.805555555555555}
+{'qa_correct': array([False,  True]), 'suff_info_correct': array([ True,  True]), 'cumulative_rewards_mean': 14.722222222222221}
+{'qa_correct': array([ True,  True]), 'suff_info_correct': array([False,  True]), 'cumulative_rewards_mean': 19.27027027027027}
+{'qa_correct': array([ True,  True]), 'suff_info_correct': array([False, False]), 'cumulative_rewards_mean': 15.5}
+{'qa_correct': array([ True, False]), 'suff_info_correct': array([ True,  True]), 'cumulative_rewards_mean': 9.1875}
+{'qa_correct': array([False, False]), 'suff_info_correct': array([False,  True]), 'cumulative_rewards_mean': 11.0}
+{'qa_correct': array([ True,  True]), 'suff_info_correct': array([False, False]), 'cumulative_rewards_mean': 16.0}
+{'qa_correct': array([ True, False]), 'suff_info_correct': array([ True,  True]), 'cumulative_rewards_mean': 13.266666666666666}
+{'qa_correct': array([ True,  True]), 'suff_info_correct': array([False, False]), 'cumulative_rewards_mean': 14.5}
+{'qa_correct': array([ True,  True]), 'suff_info_correct': array([False,  True]), 'cumulative_rewards_mean': 12.0}
+{'qa_correct': array([ True, False]), 'suff_info_correct': array([ True, False]), 'cumulative_rewards_mean': 11.26086956521739}
+{'qa_correct': array([ True,  True]), 'suff_info_correct': array([ True, False]), 'cumulative_rewards_mean': 20.67948717948718}
+{'qa_correct': array([False,  True]), 'suff_info_correct': array([False, False]), 'cumulative_rewards_mean': 8.75}
+{'qa_correct': array([ True,  True]), 'suff_info_correct': array([ True, False]), 'cumulative_rewards_mean': 18.258064516129032}
+{'qa_correct': array([False,  True]), 'suff_info_correct': array([ True, False]), 'cumulative_rewards_mean': 16.19318181818182}
+{'qa_correct': array([False, False]), 'suff_info_correct': array([False, False]), 'cumulative_rewards_mean': 11.75}
+{'qa_correct': array([False,  True]), 'suff_info_correct': array([False,  True]), 'cumulative_rewards_mean': 10.527777777777779}
+{'qa_correct': array([False, False]), 'suff_info_correct': array([False,  True]), 'cumulative_rewards_mean': 12.975}
+{'qa_correct': array([ True, False]), 'suff_info_correct': array([False,  True]), 'cumulative_rewards_mean': 13.016666666666666}
+{'qa_correct': array([ True, False]), 'suff_info_correct': array([ True,  True]), 'cumulative_rewards_mean': 10.363157894736842}

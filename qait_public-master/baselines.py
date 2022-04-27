@@ -117,9 +117,7 @@ class HumanAgent(QAAgent):
     
  
 class NaiveCNAgent(QAAgent):
-    def __init__(self, seed=None, config):
-        self.config = config
-        
+       
     def act(self, max_steps, game_states: QAGameState, reward: List[float], done: List[bool], infos: dict) -> str:
         """ Acts upon the current game state.
         Args:
@@ -134,7 +132,7 @@ class NaiveCNAgent(QAAgent):
             game in the batch.
         """
         commands = []
-        if infos['moves'][i] >= config.training.max_steps:
+        if infos['moves'][i] >= max_steps:
             commands.append("wait")
         for i in range(len(game_states)):
             game_state = game_states[i]

@@ -1,9 +1,12 @@
 import argparse
+from gym.core import RewardWrapper
+import yaml
 import datetime
 import os
 import copy
 import time
 import json
+from types import SimpleNamespace
 import visdom
 import torch
 import numpy as np
@@ -14,12 +17,17 @@ from distutils.dir_util import copy_tree
 import gym
 import textworld
 from textworld.gym import register_game, make_batch2
+from wrappers import PreprocessorWrapper, QAPairWrapper, TokenizerWrapper, HandleAnswerWrapper
+from reward_wrapper import RewardWrapper
 from agent import Agent
-import generic
-import reward_helper
-import game_generator
+from generic import GameBuffer, Transition, ReplayMemory
+from game_generator import game_generator, game_generator_queue
 import evaluate
 from query import process_facts
+from baselines import RandomAgent, HumanAgent, NaiveCNAgent
+
+from tqdm import tqdm
+import time
 
 request_infos = textworld.EnvInfos(description=True,
                                    inventory=True,
@@ -36,6 +44,121 @@ request_infos = textworld.EnvInfos(description=True,
                                    admissible_commands=True,
                                    extras=["object_locations", "object_attributes", "uuid"])
 
+
+def create_games(config: SimpleNamespace, data_path: str):
+    # Create temporary folder for the generated games.
+    global GAMES_DIR
+    GAMES_DIR = tempfile.TemporaryDirectory(prefix="tw_games_") # This is not deleted upon error. It would be better to use a with statement.
+    games_dir = os.path.join(GAMES_DIR.name, "") # So path ends with '/'.
+
+    textworld_data_path = os.path.join(data_path, "textworld_data")
+    tmp_textworld_data_path = os.path.join(games_dir, "textworld_data")
+
+    assert os.path.exists(textworld_data_path), "Oh no! textworld_data folder is not there..."
+    os.mkdir(tmp_textworld_data_path)
+    copy_tree(textworld_data_path, tmp_textworld_data_path)
+    if config.evaluate.run_eval:
+        testset_path = os.path.join(data_path, config.general.testset_path)
+        tmp_testset_path = os.path.join(games_dir, config.general.testset_path)
+        assert os.path.exists(testset_path), "Oh no! test_set folder is not there..."
+        os.mkdir(tmp_testset_path)
+        copy_tree(testset_path, tmp_testset_path)
+    
+    training_game_queue = game_generator_queue(path=games_dir, 
+        random_map=config.general.random_map, question_type=config.general.question_type,
+        max_q_size=config.training.batch_size * 2, nb_worker=1)
+    
+    fixed_buffer = True if config.general.train_data_size != -1 else False
+    buffer_capacity =  config.general.train_data_size if fixed_buffer else config.training.batch_size * 2
+    training_game_buffer = GameBuffer(buffer_capacity, fixed_buffer, training_game_queue)
+
+    return training_game_buffer
+
+def train_2(config: SimpleNamespace, data_path: str, games: GameBuffer):
+    episode_no = 0
+    agent = RandomAgent()
+    target_net = None # Set this if using DQNs copy.deepcopy(agent)
+    memory = ReplayMemory(capacity=config.replay.replay_memory_capacity)
+    f = open('results.txt','w')
+  
+
+    print("Started training...")
+    # while episode_no < config.training.max_episode:
+    try: 
+      for i in tqdm(range(config.training.max_episode)):
+          rand = np.random.default_rng(episode_no)
+          games.poll()
+          if len(games) == 0:
+              time.sleep(0.1)
+              continue
+          sampled_games = np.random.choice(games, config.training.batch_size).tolist()
+          env_ids = [register_game(gamefile, request_infos=request_infos) for gamefile in sampled_games]
+          env_id = make_batch2(env_ids, parallel=True)
+          env = gym.make(env_id)
+          env.seed(episode_no)
+
+          env = PreprocessorWrapper(env)
+          env = QAPairWrapper(env, config)
+          env = TokenizerWrapper(env)
+          env = RewardWrapper(env, config)
+          env = HandleAnswerWrapper(env)
+
+          
+          agent.reset(env) # reset for the next game
+          states, infos = env.reset() # state is List[(tokenized observation, tokenized question)] of length batch_size
+        
+          cumulative_rewards = np.zeros(len(states), dtype=float)
+          done = np.array([False] * len(states))
+          for step_no in range(config.training.max_nb_steps_per_episode):
+
+              # actions = agent.act(50, states, cumulative_rewards, done, infos) # list of strings (batch_size)
+              actions = agent.act(states, cumulative_rewards, done, infos) # list of strings (batch_size)
+              next_states, rewards, done, infos = env.step(actions) # modify to output rewards
+              cumulative_rewards += rewards
+              print(actions)
+              print(cumulative_rewards)
+              print(done)
+
+              # Store the transition in memory
+              for s_0, a, r, s_1 in zip(states, actions, rewards, next_states):
+                  # dont push states from finished games
+                  if len(s_0[0]) + len(s_0[1]) != 0:
+                      memory.push(Transition(s_0, a, r, s_1))
+
+              states = next_states
+
+              # Perform one step of the optimization (on the policy network)
+              if step_no % config.replay.update_per_k_game_steps == 0:
+                  optimize_model(agent, memory)
+              if np.all(done):
+                  # record some evaluation metrics?
+                  break
+          infos['results']['cumulative_rewards_mean'] = 0
+          for val in cumulative_rewards:
+            infos['results']['cumulative_rewards_mean'] += val
+          infos['results']['cumulative_rewards_mean'] /= len(cumulative_rewards)
+          print(infos['results'])
+          f.write(str(infos['results']))
+          f.write("\n")
+          # Update the target network, copying all weights and biases in DQN
+          if episode_no % config.training.target_net_update_frequency == 0:
+              if callable(getattr(agent, "update_target_net", None)):
+                  agent.update_target_net()
+                  # target_net.load_state_dict(policy_net.state_dict())
+          # episode_no += 1
+          env.close()
+      f.close()
+    except: 
+      print('EXCEPTION')
+      f.close()
+
+def optimize_model(agent, replay_memory):
+    ''' Just calls the agent's optimize method, if it exists
+    '''
+    if not callable(getattr(agent, "optimize_model", None)):
+        return
+    agent.optimize_model(replay_memory)
+    return
 
 def train(data_path):
 
@@ -126,19 +249,19 @@ def train(data_path):
         env = gym.make(env_id)
         env.seed(episode_no)
 
-        obs, infos = env.reset()
+        obs, infos = env.reset()                                                # Reset env, get observation and supplementary infos
         batch_size = len(obs)
         # generate question-answer pairs here
         questions, answers, reward_helper_info = game_generator.generate_qa_pairs(infos, question_type=agent.question_type, seed=episode_no)
         print("====================================================================================", episode_no)
-        print(questions[0], answers[0])
+        print(questions[0], answers[0])                                         # Generate 1 QA pair for each sample in batch using infos (plus reward helper?)
 
-        agent.train()
-        agent.init(obs, infos)
+        agent.train()                                                           # Set agent to train mode (eh?)
+        agent.init(obs, infos)                                                  
 
         commands, last_facts, init_facts = [], [], []
-        commands_per_step, game_facts_cache = [], []
-        for i in range(batch_size):
+        commands_per_step, game_facts_cache = [], []                            # Associate at each step the observation with
+        for i in range(batch_size):                                             # the command used to get it
             commands.append("restart")
             last_facts.append(None)
             init_facts.append(None)
@@ -172,12 +295,12 @@ def train(data_path):
 
             # generate commands
             if agent.noisy_net:
-                agent.reset_noise()  # Draw a new set of noisy weights
+                agent.reset_noise()  # Draw a new set of noisy weights          # Parametric noise added to weights
 
             observation_strings_w_history = agent.naozi.get()
             input_observation, input_observation_char, _ =  agent.get_agent_inputs(observation_strings_w_history)
             commands, replay_info = agent.act(obs, infos, input_observation, input_observation_char, input_quest, input_quest_char, possible_words, random=act_randomly)
-            for i in range(batch_size):
+            for i in range(batch_size):                                         # Get Agent action and step
                 commands_per_step[i].append(commands[i])
 
             replay_info = [observation_strings_w_history, questions, possible_words] + replay_info
@@ -390,8 +513,19 @@ def train(data_path):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Train an agent.")
+    parser.add_argument("config_path", default="./config.yaml")
     parser.add_argument("data_path",
                         default="./",
                         help="where the data (games) are.")
     args = parser.parse_args()
-    train(args.data_path)
+    with open(args.config_path) as config_reader:
+        config = yaml.safe_load(config_reader)
+        config = json.loads(json.dumps(config), object_hook=lambda d : SimpleNamespace(**d))
+    
+    try:
+        game_gen = create_games(config, args.data_path)
+        train_2(config, args.data_path, game_gen)
+    finally:
+        if GAMES_DIR:
+            GAMES_DIR.cleanup()
+    

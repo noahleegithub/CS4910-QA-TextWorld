@@ -19,7 +19,7 @@ import textworld
 from textworld.gym import register_game, make_batch2
 from wrappers import PreprocessorWrapper, QAPairWrapper, TokenizerWrapper, HandleAnswerWrapper
 from reward_wrapper import RewardWrapper
-from agent import Agent
+from agent import DQNAgent
 from generic import GameBuffer, Transition, ReplayMemory
 from game_generator import game_generator, game_generator_queue
 import evaluate
@@ -74,7 +74,7 @@ def create_games(config: SimpleNamespace, data_path: str):
 
 def train_2(config: SimpleNamespace, data_path: str, games: GameBuffer):
     episode_no = 0
-    agent = NaiveCNAgent()
+    agent = RandomAgent()
     target_net = None # Set this if using DQNs copy.deepcopy(agent)
     memory = ReplayMemory(capacity=config.replay.replay_memory_capacity)
 
@@ -100,12 +100,12 @@ def train_2(config: SimpleNamespace, data_path: str, games: GameBuffer):
         
         agent.reset(env) # reset for the next game
         states, infos = env.reset() # state is List[(tokenized observation, tokenized question)] of length batch_size
-
+        print(infos['command_templates'])
         cumulative_rewards = np.zeros(len(states), dtype=float)
         done = np.array([False] * len(states))
         for step_no in range(config.training.max_nb_steps_per_episode):
 
-            actions = agent.act(50, states, cumulative_rewards, done, infos) # list of strings (batch_size)
+            actions = agent.act(states, cumulative_rewards, done, infos) # list of strings (batch_size)
             next_states, rewards, done, infos = env.step(actions) # modify to output rewards
             cumulative_rewards += rewards
             print(actions)
@@ -137,6 +137,7 @@ def train_2(config: SimpleNamespace, data_path: str, games: GameBuffer):
                 # target_net.load_state_dict(policy_net.state_dict())
         
         episode_no += 1
+        env.close()
 
 def train(data_path):
 

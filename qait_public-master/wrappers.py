@@ -64,10 +64,6 @@ class TokenizerWrapper(gym.ObservationWrapper):
         for i in range(len(observations)):
             tokenized_feedback = [token.text for token in self.nlp(observations[i][0])]
             tokenized_question = [token.text for token in self.nlp(observations[i][1])]
-            tokenized_feedback.insert(0, "[START]")
-            tokenized_question.insert(0, "[START]")
-            tokenized_feedback.append("[END]")
-            tokenized_question.append("[END]")
             observations[i] = (tokenized_feedback, tokenized_question)
         return (observations, infos) if type(obs) is tuple else observations
 

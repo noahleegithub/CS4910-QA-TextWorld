@@ -17,8 +17,7 @@ import torch.nn.functional as F
 from baselines import QAAgent
 import command_generation_memory
 import qa_memory
-from model import DQN
-from layers import compute_mask, NegativeLogLoss
+from model import DQN, Embedder
 from generic import to_np, to_pt, preproc, _words_to_ids, pad_sequences
 from generic import max_len, ez_gather_dim_1, ObservationPool
 from generic import list_of_token_list_to_char_input, ReplayMemory, Transition
@@ -31,27 +30,22 @@ class DQNAgent(nn.Module, QAAgent):
         self.config = config
         self.device = torch.device("cuda" if self.config.general.use_cuda and torch.cuda.is_available() else "cpu")
         
-        self.fasttext = h5py.File('crawl-300d-2M.vec.h5', 'r')
-        self.id2word = [str(b) for b in self.fasttext['words_flatten'][0].split(b'\n')]
-        self.word2id = {word: idx for idx, word in enumerate(self.id2word)}
+        with open("vocabularies/word_vocab.txt") as f:
+            vocab = f.read().split()
+        self.word_embeddings = Embedder(vocab, config.model.word_embedding_size, "crawl-300d-2M.vec.h5")
         
-        self.policy_net = DQN(config,
-                              word_vocab=self.word_vocab,
-                              char_vocab=self.char_vocab,
-                              answer_type=self.answer_type)
-        self.target_net = DQN(config=self.config,
-                              word_vocab=self.word_vocab,
-                              char_vocab=self.char_vocab,
-                              answer_type=self.answer_type)
+        self.policy_net = LSTMDQN(config)
+        self.target_net = LSTMDQN(config)
 
         self.train()
         self.update_target_net()
     
         # optimizer
-        self.optimizer = torch.optim.AdamW(self.online_net.parameters(), 
+        self.optimizer = torch.optim.AdamW(self.policy_net.parameters(), 
             lr=self.config.training.optimizer.learning_rate)
 
-        
+    def reset(self, environment):
+        pass
 
     def train(self):
         self.policy_net.train()
@@ -80,7 +74,7 @@ class DQNAgent(nn.Module, QAAgent):
             print("Failed to load checkpoint...")
 
     def save_model_to_path(self, save_to):
-        torch.save(self.online_net.state_dict(), save_to)
+        torch.save(self.target_net.state_dict(), save_to)
         print("Saved checkpoint to %s..." % (save_to))
 
 
@@ -97,22 +91,22 @@ class DQNAgent(nn.Module, QAAgent):
             List of text commands to be performed in this current state for each
             game in the batch.
         """
-
-        game_states_ids = self.words_to_ids(game_states)
-
-
+        outputs = self.policy_net(self.embed_states(game_states))
         pass
 
-    def words_to_ids(self, data):
-        if isinstance(data, str):
-            return self.word2id.get(data)
-        elif isinstance(data, list) or isinstance(data, tuple):
-            result = []
-            for item in data:
-                res = self.words_to_ids(item)
-                if res is not None: result.append(res)
-            return result
-        return data
+    def embed_states(self, data):
+        data = tuple(zip(*data))
+        observations = []
+        questions = []
+        for obs in data[0]:
+            observations.append(torch.stack([self.word_embeddings(word) for word in obs]))
+        for ques in data[1]:
+            questions.append(torch.stack([self.word_embeddings(word) for word in ques]))
+        print(observations[0].shape, observations[1].shape)
+        print(questions[0].shape, questions[1].shape)
+        observations = nn.utils.rnn.pack_sequence(observations, enforce_sorted=False)
+        questions = nn.utils.rnn.pack_sequence(questions, enforce_sorted=False)
+        return observations, questions
    
 
     def optimize_model(self, replay_memory: ReplayMemory):
@@ -153,4 +147,14 @@ class DQNAgent(nn.Module, QAAgent):
             self.config.training.optimizer.clip_grad_norm)  
         self.optimizer.step()
 
-   
+class LSTMDQN(nn.Module):
+
+    def __init__(self, config: SimpleNamespace) -> None:
+        super().__init__()
+        self.config = config
+        self.question_encoder = nn.LSTM(input_size=config.model.word_embedding_size, hidden_size=128)
+
+    def forward(self, x):
+        observations, questions = x
+        print(x[0].batch_sizes, x[1].batch_sizes)
+        pass

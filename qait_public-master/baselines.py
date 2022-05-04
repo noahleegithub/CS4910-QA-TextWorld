@@ -1,7 +1,7 @@
 import textworld
 from typing import List, Tuple
 import numpy as np
-import conceptnet.py as conceptnet
+import conceptnet
 
 QAGameState = List[Tuple[List[str], List[str]]]
 

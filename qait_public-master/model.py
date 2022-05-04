@@ -3,12 +3,11 @@ import os
 import numpy as np
 import h5py
 from typing import Union
+import math
 
 import torch
 from torch import nn
 import torch.nn.functional as F
-
-from layers import Embedding, MergeEmbeddings, EncoderBlock, CQAttention, AnswerPointer, masked_softmax, NoisyLinear
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +33,7 @@ class Embedder(nn.Module):
                 x = self.word2idx[x]
             else:
                 x = self.word2idx['<unk>']
-        return self.embeddings(x)
+        return self.embeddings[x]
 
 class PositionalEncoder(nn.Module):
     def __init__(self, d_model, max_seq_len = 80):
@@ -176,7 +175,8 @@ class EncoderLayer(nn.Module):
         return x
     
 # build a decoder layer with two multi-head attention layers and
-# one feed-forward layerclass DecoderLayer(nn.Module):
+# one feed-forward layer
+class DecoderLayer(nn.Module):
     def __init__(self, d_model, heads, dropout=0.1):
         super().__init__()
         self.norm_1 = Norm(d_model)
@@ -212,6 +212,7 @@ class Encoder(nn.Module):
         self.pe = PositionalEncoder(d_model)
         self.layers = get_clones(EncoderLayer(d_model, heads), N)
         self.norm = Norm(d_model)
+
     def forward(self, src, mask):
         x = self.embed(src)
         x = self.pe(x)
@@ -227,6 +228,7 @@ class Decoder(nn.Module):
         self.pe = PositionalEncoder(d_model)
         self.layers = get_clones(DecoderLayer(d_model, heads), N)
         self.norm = Norm(d_model)
+
     def forward(self, trg, e_outputs, src_mask, trg_mask):
         x = self.embed(trg)
         x = self.pe(x)
@@ -240,6 +242,7 @@ class Transformer(nn.Module):
         self.encoder = Encoder(src_vocab, d_model, N, heads)
         self.decoder = Decoder(trg_vocab, d_model, N, heads)
         self.out = nn.Linear(d_model, trg_vocab)
+
     def forward(self, src, trg, src_mask, trg_mask):
         e_outputs = self.encoder(src, src_mask)
         d_output = self.decoder(trg, e_outputs, src_mask, trg_mask)

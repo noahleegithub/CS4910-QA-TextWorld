@@ -1,6 +1,8 @@
 import logging
 import os
 import numpy as np
+import h5py
+from typing import Union
 
 import torch
 from torch import nn
@@ -12,12 +14,27 @@ logger = logging.getLogger(__name__)
 
 class Embedder(nn.Module):
 
-    def __init__(self, vocab_size, d_model):
+    def __init__(self, vocab, embed_dim, vecs_path):
         super().__init__()
-        self.embed = nn.Embedding(vocab_size, d_model)
+        f = h5py.File(vecs_path, 'r')
+        id2word = map(str, f['words_flatten'][0].split(b'\n'))
+        word2id = {word: idx for idx, word in enumerate(id2word)}
+        self.embeddings = []
+        for word in vocab:
+            if word in word2id:
+                self.embeddings.append(torch.tensor(f['embedding'][word2id[word]]))
+            else:
+                self.embeddings.append(torch.normal(torch.zeros(embed_dim), torch.ones(embed_dim)))
+        self.embeddings = nn.Parameter(torch.stack(self.embeddings))
+        self.word2idx = {word: idx for idx, word in enumerate(vocab)}
 
-    def forward(self, x):
-        return self.embed(x)
+    def forward(self, x: Union[str, int]):
+        if isinstance(x, str):
+            if x in self.word2idx:
+                x = self.word2idx[x]
+            else:
+                x = self.word2idx['<unk>']
+        return self.embeddings(x)
 
 class PositionalEncoder(nn.Module):
     def __init__(self, d_model, max_seq_len = 80):
@@ -101,9 +118,11 @@ class MultiHeadAttention(nn.Module):
 
 def attention(q, k, v, d_k, mask=None, dropout=None):
     
-    scores = torch.matmul(q, k.transpose(-2, -1)) /  math.sqrt(d_k)if mask is not None:
+    scores = torch.matmul(q, k.transpose(-2, -1)) /  math.sqrt(d_k)
+    if mask is not None:
         mask = mask.unsqueeze(1)
-        scores = scores.masked_fill(mask == 0, -1e9)scores = F.softmax(scores, dim=-1)
+        scores = scores.masked_fill(mask == 0, -1e9)
+        scores = F.softmax(scores, dim=-1)
     
     if dropout is not None:
         scores = dropout(scores)
@@ -138,7 +157,8 @@ class Norm(nn.Module):
         / (x.std(dim=-1, keepdim=True) + self.eps) + self.bias
         return norm
 
-# build an encoder layer with one multi-head attention layer and one # feed-forward layerclass EncoderLayer(nn.Module):
+# build an encoder layer with one multi-head attention layer and one # feed-forward layer
+class EncoderLayer(nn.Module):
     def __init__(self, d_model, heads, dropout = 0.1):
         super().__init__()
         self.norm_1 = Norm(d_model)
@@ -169,7 +189,9 @@ class Norm(nn.Module):
         
         self.attn_1 = MultiHeadAttention(heads, d_model)
         self.attn_2 = MultiHeadAttention(heads, d_model)
-        self.ff = FeedForward(d_model).cuda()def forward(self, x, e_outputs, src_mask, trg_mask):
+        self.ff = FeedForward(d_model).cuda()
+
+    def forward(self, x, e_outputs, src_mask, trg_mask):
         x2 = self.norm_1(x)
         x = x + self.dropout_1(self.attn_1(x2, x2, x2, trg_mask))
         x2 = self.norm_2(x)
@@ -177,7 +199,9 @@ class Norm(nn.Module):
         src_mask))
         x2 = self.norm_3(x)
         x = x + self.dropout_3(self.ff(x2))
-        return x# We can then build a convenient cloning function that can generate multiple layers:def get_clones(module, N):
+        return x# We can then build a convenient cloning function that can generate multiple layers:
+
+def get_clones(module, N):
     return nn.ModuleList([copy.deepcopy(module) for i in range(N)])
 
 class Encoder(nn.Module):

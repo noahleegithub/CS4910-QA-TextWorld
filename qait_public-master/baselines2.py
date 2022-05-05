@@ -1,6 +1,5 @@
-import conceptnet
+import spacy
 import textworld
-
 
 class QAAgent(textworld.Agent):
     """ Interface for any agent that want to play a text-based game. """
@@ -83,8 +82,9 @@ class CNAgent(QAAgent):
         env.activate_state_tracking()
 
     def act(self, game_state, reward, done):
+        nlp = spacy.load("en_core_web_lg")
         words = game_state.feedback
-        action = np.argmax(map(lambda x: conceptnet.similarity_score(game_state, x), game_state.admissible_commands))
+        action = np.argmax(map(lambda x: nlp(game_state).similarity(nlp(x)), game_state.admissible_commands))
         return action
 
 class RandomAgent(QAAgent):

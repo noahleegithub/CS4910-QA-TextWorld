@@ -1,7 +1,7 @@
 import textworld
 from typing import List, Tuple
 import numpy as np
-import conceptnet
+import spacy
 
 QAGameState = List[Tuple[List[str], List[str]]]
 
@@ -131,11 +131,12 @@ class NaiveCNAgent(QAAgent):
             List of text commands to be performed in this current state for each
             game in the batch.
         """
+        nlp = spacy.load("en_core_web_lg")
         commands = []
         if infos['moves'][i] >= max_steps:
             commands.append("wait")
         for i in range(len(game_states)):
             game_state = game_states[i]
-            action = infos['admissible_commands'][i][np.argmax(map(lambda x: conceptnet.similarity_score(game_state, x), infos['admissible_commands'][i]))]
+            action = infos['admissible_commands'][i][np.argmax(map(lambda x: nlp(game_state).similarity(nlp(x)), infos['admissible_commands'][i]))]
             commands.append(action)
         return commands

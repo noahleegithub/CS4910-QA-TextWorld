@@ -76,7 +76,7 @@ def create_games(config: SimpleNamespace, data_path: str):
 
 def train_2(config: SimpleNamespace, data_path: str, games: GameBuffer):
     episode_no = 0
-    agent = DQNAgent(config)
+    agent = NaiveCNAgent()
     target_net = None # Set this if using DQNs copy.deepcopy(agent)
     memory = ReplayMemory(capacity=config.replay.replay_memory_capacity)
   

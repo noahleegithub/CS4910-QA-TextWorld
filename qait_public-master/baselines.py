@@ -117,7 +117,7 @@ class HumanAgent(QAAgent):
     
  
 class NaiveCNAgent(QAAgent):
-    def __init__(config):
+    def __init__(self, config):
         self.config = config
        
     def act(self, game_states: QAGameState, reward: List[float], done: List[bool], infos: dict) -> str:

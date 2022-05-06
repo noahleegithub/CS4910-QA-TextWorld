@@ -117,8 +117,10 @@ class HumanAgent(QAAgent):
     
  
 class NaiveCNAgent(QAAgent):
+    def __init__(config):
+        self.config = config
        
-    def act(self, max_steps, game_states: QAGameState, reward: List[float], done: List[bool], infos: dict) -> str:
+    def act(self, game_states: QAGameState, reward: List[float], done: List[bool], infos: dict) -> str:
         """ Acts upon the current game state.
         Args:
             game_states: List of length batch_size, each entry is a tuple of the
@@ -133,7 +135,7 @@ class NaiveCNAgent(QAAgent):
         """
         nlp = spacy.load("en_core_web_lg")
         commands = []
-        if infos['moves'][i] >= max_steps:
+        if infos['moves'][i] >= self.config.max_nb_steps_per_episode:
             commands.append("wait")
         for i in range(len(game_states)):
             game_state = game_states[i]

@@ -126,26 +126,19 @@ def train_2(config: SimpleNamespace, data_path: str, games: GameBuffer):
             states = next_states
 
             # Perform one step of the optimization (on the policy network)
-            if step_no % config.replay.update_per_k_game_steps == 0:
+            if step_no != 0 and step_no % config.replay.update_per_k_game_steps == 0:
                 if callable(getattr(agent, "optimize_model", None)):
-                    agent.optimize_model(replay_memory)
+                    agent.optimize_model(memory)
             if np.all(done):
                 # record some evaluation metrics?
                 print(infos['results'])
+                break
         # Update the target network, copying all weights and biases in DQN
         if episode_no % config.training.target_net_update_frequency == 0:
             if callable(getattr(agent, "update_target_net", None)):
                 agent.update_target_net()
         episode_no += 1
         env.close()
-
-def optimize_model(agent, replay_memory):
-    ''' Just calls the agent's optimize method, if it exists
-    '''
-    if not callable(getattr(agent, "optimize_model", None)):
-        return
-    agent.optimize_model(replay_memory)
-    return
 
 def train(data_path):
 

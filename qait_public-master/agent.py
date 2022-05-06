@@ -15,7 +15,7 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
-from baselines import QAAgent
+from baselines import QAAgent, RandomAgent
 import command_generation_memory
 import qa_memory
 from model import DQN, Embedder
@@ -40,6 +40,15 @@ class DQNAgent(nn.Module, QAAgent):
 
         self.train()
         self.update_target_net()
+        
+        self.epsilon_start = config.epsilon_greedy.start_from_this_episode
+        self.episode_no = 0
+        self.max_epsilon = config.epsilon_greedy.epsilon_anneal_from
+        self.min_epsilon = config.epsilon_greedy.epsilon_anneal_to
+        self.epsilon_delta = (self.max_epsilon - self.min_epsilon) / config.epsilon_greedy.epsilon_anneal_episodes
+        self.rng = np.random.default_rng(config.general.random_seed)
+
+        self.random_agent = RandomAgent()
     
         # optimizer
         self.optimizer = torch.optim.AdamW(self.policy_net.parameters(), 
@@ -78,9 +87,13 @@ class DQNAgent(nn.Module, QAAgent):
         torch.save(self.target_net.state_dict(), save_to)
         print("Saved checkpoint to %s..." % (save_to))
     
-    def vectorized_get_words(self):
+    def vectorized_idx2word(self):
         get_word = lambda idx: self.word_embeddings.vocab[idx]
         return np.vectorize(get_word)
+
+    def vectorized_word2idx(self):
+        get_idx = lambda word: self.word_embeddings.word2idx[word]
+        return np.vectorize(get_idx)
 
     def act(self, game_states, cumulative_rewards, done, infos) -> List[str]:
         """ Acts upon the current game state.
@@ -95,17 +108,29 @@ class DQNAgent(nn.Module, QAAgent):
             List of text commands to be performed in this current state for each
             game in the batch.
         """
-        with torch.no_grad():
-            outputs = self.policy_net(self.embed_states(game_states))
-        return self.vectorized_get_words()(np.argmax(outputs.numpy(), axis=2)).transpose()
+        current_epsilon = max(self.min_epsilon, self.max_epsilon - (max(0, self.episode_no - self.epsilon_start) * self.epsilon_delta))
+        if self.rng.random() < current_epsilon:
+            actions = self.random_agent.act(game_states, cumulative_rewards, done, infos)
+        else:
+            with torch.no_grad():
+                outputs = self.policy_net(self.embed_states(game_states))
+            actions = self.vectorized_idx2word()(np.argmax(outputs.numpy(), axis=2)).transpose()
+            actions = [' '.join(action) for action in actions.tolist()]
+            actions = [action.replace('<pad>', '') for action in actions]
+        self.episode_no += 1
+        return actions
         
     def embed_states(self, data):
         data = tuple(zip(*data))
         observations = []
         questions = []
         for obs in data[0]:
+            obs.insert(0, '<s>')
+            obs.append('</s>')
             observations.append(torch.stack([self.word_embeddings(word) for word in obs]))
         for ques in data[1]:
+            ques.insert(0, '<s>')
+            ques.append('</s>')
             questions.append(torch.stack([self.word_embeddings(word) for word in ques]))
 
         return observations, questions
@@ -116,16 +141,30 @@ class DQNAgent(nn.Module, QAAgent):
             return
         transitions = replay_memory.sample(self.config.replay.replay_batch_size)
         batch = Transition(*zip(*transitions))
+        print(transitions)
+        print(batch)
+        
+        non_final_next_states = self.embed_states(batch.next_state)
+        state_batch = self.embed_states(batch.state)
 
-        non_final_next_states = torch.cat(batch.next_state)
-        state_batch = torch.cat(batch.state)
-        action_batch = torch.cat(batch.action)
-        reward_batch = torch.cat(batch.reward)
+        action_batch = []
+        for action in batch.action:
+            action = action.split()
+            action = action + ['<pad>'] * (self.config.model.action_length - len(action))
+            action_batch.append(torch.tensor([self.word_embeddings.word2idx[word] for word in action]))
+        action_batch = torch.stack(action_batch, dim=0).transpose(1,0)
+
+        reward_batch = torch.tensor(batch.reward)
 
         # Compute Q(s_t, a) - the model computes Q(s_t), then we select the
         # columns of actions taken. These are the actions which would've been taken
         # for each batch state according to policy_net
-        state_action_values = self.policy_net(state_batch, action_batch)
+        state_values = self.policy_net(state_batch) 
+        print(state_values.shape)
+        print(action_batch.shape)
+        state_action_values = state_values[action_batch]
+       
+        print(state_action_values.shape)
 
         # Compute V(s_{t+1}) for all next states.
         # Expected values of actions for non_final_next_states are computed based
@@ -172,6 +211,8 @@ class LSTMDQN(nn.Module):
         obs_lengths, q_lengths = [len(o) for o in observations], [len(q) for q in questions]
         observations = nn.utils.rnn.pad_sequence(observations, batch_first=True)
         questions = nn.utils.rnn.pad_sequence(questions, batch_first=False)
+
+        print(obs_lengths)
 
         N, L1, C = observations.shape
         _, L2, _ = questions.shape

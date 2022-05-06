@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from typing import List
 import yaml
 import copy
+import json
 from collections import namedtuple
 from os.path import join as pjoin
 import h5py
@@ -34,8 +35,8 @@ class DQNAgent(nn.Module, QAAgent):
             vocab = f.read().split()
         self.word_embeddings = Embedder(vocab, config.model.word_embedding_size, "crawl-300d-2M.vec.h5")
         
-        self.policy_net = LSTMDQN(config)
-        self.target_net = LSTMDQN(config)
+        self.policy_net = LSTMDQN(config, self.word_embeddings)
+        self.target_net = LSTMDQN(config, self.word_embeddings)
 
         self.train()
         self.update_target_net()
@@ -76,7 +77,10 @@ class DQNAgent(nn.Module, QAAgent):
     def save_model_to_path(self, save_to):
         torch.save(self.target_net.state_dict(), save_to)
         print("Saved checkpoint to %s..." % (save_to))
-
+    
+    def vectorized_get_words(self):
+        get_word = lambda idx: self.word_embeddings.vocab[idx]
+        return np.vectorize(get_word)
 
     def act(self, game_states, cumulative_rewards, done, infos) -> List[str]:
         """ Acts upon the current game state.
@@ -91,9 +95,10 @@ class DQNAgent(nn.Module, QAAgent):
             List of text commands to be performed in this current state for each
             game in the batch.
         """
-        outputs = self.policy_net(self.embed_states(game_states))
-        pass
-
+        with torch.no_grad():
+            outputs = self.policy_net(self.embed_states(game_states))
+        return self.vectorized_get_words()(np.argmax(outputs.numpy(), axis=2)).transpose()
+        
     def embed_states(self, data):
         data = tuple(zip(*data))
         observations = []
@@ -102,10 +107,7 @@ class DQNAgent(nn.Module, QAAgent):
             observations.append(torch.stack([self.word_embeddings(word) for word in obs]))
         for ques in data[1]:
             questions.append(torch.stack([self.word_embeddings(word) for word in ques]))
-        print(observations[0].shape, observations[1].shape)
-        print(questions[0].shape, questions[1].shape)
-        observations = nn.utils.rnn.pack_sequence(observations, enforce_sorted=False)
-        questions = nn.utils.rnn.pack_sequence(questions, enforce_sorted=False)
+
         return observations, questions
    
 
@@ -149,12 +151,59 @@ class DQNAgent(nn.Module, QAAgent):
 
 class LSTMDQN(nn.Module):
 
-    def __init__(self, config: SimpleNamespace) -> None:
+    def __init__(self, config: SimpleNamespace, embedder) -> None:
         super().__init__()
         self.config = config
-        self.question_encoder = nn.LSTM(input_size=config.model.word_embedding_size, hidden_size=128)
+        embed_dim = config.model.word_embedding_size
+        self.observation_conv = nn.Conv1d(in_channels=embed_dim, out_channels=embed_dim,
+            kernel_size=config.model.conv_kernel, stride=config.model.conv_stride)
+        self.observation_encoder = nn.LSTM(embed_dim, config.model.hidden_dim)
+        self.question_encoder = nn.LSTM(embed_dim, config.model.hidden_dim)
+        self.answer_decoder = nn.LSTMCell(embed_dim, config.model.hidden_dim*2)
+        self.word_proj = nn.Linear(in_features=config.model.hidden_dim*2, out_features=len(embedder.vocab))
+        self.action_length = config.model.action_length
+        self.embedder = embedder
+
 
     def forward(self, x):
+        kernel = self.config.model.conv_kernel
+        stride = self.config.model.conv_stride
         observations, questions = x
-        print(x[0].batch_sizes, x[1].batch_sizes)
-        pass
+        obs_lengths, q_lengths = [len(o) for o in observations], [len(q) for q in questions]
+        observations = nn.utils.rnn.pad_sequence(observations, batch_first=True)
+        questions = nn.utils.rnn.pad_sequence(questions, batch_first=False)
+
+        N, L1, C = observations.shape
+        _, L2, _ = questions.shape
+        observations = self.observation_conv(observations.permute((0,2,1)))
+        observations = observations.permute((2,0,1))
+        obs_lengths = [int((l - kernel) / stride) + 1 for l in obs_lengths]
+
+        observations = nn.utils.rnn.pack_padded_sequence(observations, torch.tensor(obs_lengths), enforce_sorted=False)
+        questions = nn.utils.rnn.pack_padded_sequence(questions, torch.tensor(q_lengths), enforce_sorted=False)
+
+        _, (obs_hidden, _) = self.observation_encoder(observations)
+        _, (q_hidden, _) = self.question_encoder(questions)
+        decoder_hidden_state = torch.cat((obs_hidden, q_hidden), dim=2).squeeze()
+
+        decoder_h, decoder_c = decoder_hidden_state, torch.zeros_like(decoder_hidden_state)
+        decoded_word = self.embedder([3] * N)
+        output = []
+
+        for idx in range(self.action_length):
+            decoder_h, decoder_c = self.answer_decoder(decoded_word, (decoder_h, decoder_c))
+            output.append(self.word_proj(decoder_h))
+            decoded_word = self.embedder(torch.argmax(output[-1], dim=1))
+            
+        return torch.stack(output, dim=0)
+
+if __name__ == "__main__":
+    with open("config.yaml") as config_reader:
+        config = yaml.safe_load(config_reader)
+        config = json.loads(json.dumps(config), object_hook=lambda d : SimpleNamespace(**d))
+    
+    agent = DQNAgent(config)
+    out = agent.act([(['if', 'you', "'re", 'wondering', 'why', 'everything', 'seems', 'so', 'typical', 'all', 'of', 'a', 'sudden', ',', 'it', "'s", 'because', 'you', "'ve", 'just', 'sauntered', 'into', 'the', 'shed', '.', 'if', 'you', 'have', "n't", 'noticed', 'it', 'already', ',', 'there', 'seems', 'to', 'be', 'something', 'there', 'by', 'the', 'wall', ',', 'it', "'s", 'a', 'stainless', 'oven', '.', 'the', 'oven', 'is', 'empty', '!', 'this', 'is', 'the', 'worst', 'thing', 'that', 'could', 'possibly', 'happen', ',', 'ever', '!', 'you', 'rest', 'your', 'hand', 'against', 'a', 'wall', ',', 'but', 'you', 'miss', 'the', 'wall', 'and', 'fall', 'onto', 'a', 'comfy', 'sofa', '.', 'on', 'the', 'comfy', 'sofa', 'you', 'can', 'make', 'out', 'an', 'interesting', 'cookbook', '.', 'you', 'shudder', ',', 'but', 'continue', 'examining', 'the', 'room', '.', 'there', 'is', 'a', 'closed', 'iron', 'gate', 'leading', 'west', '.', 'there', 'is', 'an', 'open', 'wooden', 'door', 'leading', 'south', '.'], ['is', 'there', 'any', 'gas', 'grill', 'in', 'the', 'world', '?']), (['if', 'you', "'re", 'wondering', 'why', 'everything', 'seems', 'so', 'typical', 'all', 'of', 'a', 'sudden', ',', 'it', "'s", 'because', 'you', "'ve", 'just', 'sauntered', 'into', 'the', 'shed', '.', 'if', 'you', 'have', "n't", 'noticed', 'it', 'already', ',', 'there', 'seems', 'to', 'be', 'something', 'there', 'by', 'the', 'wall', ',', 'it', "'s", 'a', 'stainless', 'oven', '.', 'hmmm', '...', 'what', 'else', ',', 'what', 'else', '?', 'the', 'oven', 'is', 'empty', '!', 'this', 'is', 'the', 'worst', 'thing', 'that', 'could', 'possibly', 'happen', ',', 'ever', '!', 'you', 'rest', 'your', 'hand', 'against', 'a', 'wall', ',', 'but', 'you', 'miss', 'the', 'wall', 'and', 'fall', 'onto', 'a', 'comfy', 'sofa', '.', 'on', 'the', 'comfy', 'sofa', 'you', 'can', 'make', 'out', 'an', 'interesting', 'cookbook', '.', 'you', 'shudder', ',', 'but', 'continue', 'examining', 'the', 'room', '.', 'there', 'is', 'a', 'closed', 'iron', 'gate', 'leading', 'west', '.', 'there', 'is', 'an', 'open', 'wooden', 'door', 'leading', 'south', '.'], ['is', 'there', 'any', 'king', 'bed', 'in', 'the', 'world', '?'])], None, None, None)
+    print(out.shape, out)
+    #print(obs.shape, q.shape)
+

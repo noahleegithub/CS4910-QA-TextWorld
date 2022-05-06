@@ -76,7 +76,7 @@ def create_games(config: SimpleNamespace, data_path: str):
 
 def train_2(config: SimpleNamespace, data_path: str, games: GameBuffer):
     episode_no = 0
-    agent = NaiveCNAgent(config)
+    agent = DQNAgent(config)
     target_net = None # Set this if using DQNs copy.deepcopy(agent)
     memory = ReplayMemory(capacity=config.replay.replay_memory_capacity)
   
@@ -103,7 +103,8 @@ def train_2(config: SimpleNamespace, data_path: str, games: GameBuffer):
         
         agent.reset(env) # reset for the next game
         states, infos = env.reset() # state is List[(tokenized observation, tokenized question)] of length batch_size
-    
+        print(infos['object_nouns'])
+        print(infos['object_adjs'])
         cumulative_rewards = np.zeros(len(states), dtype=float)
         done = np.array([False] * len(states))
         for step_no in range(config.training.max_nb_steps_per_episode):

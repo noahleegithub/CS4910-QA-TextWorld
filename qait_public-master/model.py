@@ -25,6 +25,7 @@ class Embedder(nn.Module):
             else:
                 self.embeddings.append(torch.normal(torch.zeros(embed_dim), torch.ones(embed_dim)))
         self.embeddings = nn.Parameter(torch.stack(self.embeddings))
+        self.vocab = vocab
         self.word2idx = {word: idx for idx, word in enumerate(vocab)}
 
     def forward(self, x: Union[str, int]):

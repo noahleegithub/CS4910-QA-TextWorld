@@ -55,7 +55,8 @@ class DQNAgent(nn.Module, QAAgent):
             lr=self.config.training.optimizer.learning_rate)
 
     def reset(self, environment):
-        pass
+        self.episode_no += self.config.training.batch_size
+        return
 
     def train(self):
         self.policy_net.train()
@@ -117,7 +118,6 @@ class DQNAgent(nn.Module, QAAgent):
             actions = self.vectorized_idx2word()(np.argmax(outputs.numpy(), axis=2)).transpose()
             actions = [' '.join(action) for action in actions.tolist()]
             actions = [action.replace('<pad>', '') for action in actions]
-        self.episode_no += 1
         return actions
         
     def embed_states(self, data):
@@ -125,6 +125,8 @@ class DQNAgent(nn.Module, QAAgent):
         observations = []
         questions = []
         for obs in data[0]:
+            if len(obs) < self.config.model.conv_kernel:
+                obs = obs + ['<pad>'] * (self.config.model.conv_kernel - len(obs))
             obs.insert(0, '<s>')
             obs.append('</s>')
             observations.append(torch.stack([self.word_embeddings(word) for word in obs]))
@@ -141,8 +143,6 @@ class DQNAgent(nn.Module, QAAgent):
             return
         transitions = replay_memory.sample(self.config.replay.replay_batch_size)
         batch = Transition(*zip(*transitions))
-        print(transitions)
-        print(batch)
         
         non_final_next_states = self.embed_states(batch.next_state)
         state_batch = self.embed_states(batch.state)
@@ -152,19 +152,15 @@ class DQNAgent(nn.Module, QAAgent):
             action = action.split()
             action = action + ['<pad>'] * (self.config.model.action_length - len(action))
             action_batch.append(torch.tensor([self.word_embeddings.word2idx[word] for word in action]))
-        action_batch = torch.stack(action_batch, dim=0).transpose(1,0)
+        action_batch = torch.stack(action_batch, dim=0).transpose(1,0).unsqueeze(2)
 
         reward_batch = torch.tensor(batch.reward)
 
         # Compute Q(s_t, a) - the model computes Q(s_t), then we select the
         # columns of actions taken. These are the actions which would've been taken
         # for each batch state according to policy_net
-        state_values = self.policy_net(state_batch) 
-        print(state_values.shape)
-        print(action_batch.shape)
-        state_action_values = state_values[action_batch]
-       
-        print(state_action_values.shape)
+        state_action_values = self.policy_net(state_batch).gather(2, action_batch)
+        state_action_values = state_action_values.sum(dim=0).squeeze()
 
         # Compute V(s_{t+1}) for all next states.
         # Expected values of actions for non_final_next_states are computed based
@@ -173,13 +169,13 @@ class DQNAgent(nn.Module, QAAgent):
         # state value or 0 in case the state was final.
         next_state_values = torch.zeros(self.config.replay.replay_batch_size, device=self.device)
         with torch.no_grad():
-            next_state_values[:] = self.target_net(non_final_next_states).max(1)[0]
+            next_state_values[:] = self.target_net(non_final_next_states).max(dim=2)[0].sum(dim=0)
         # Compute the expected Q values
         expected_state_action_values = (next_state_values * self.config.replay.discount_gamma) + reward_batch
 
         # Compute Huber loss
         criterion = nn.SmoothL1Loss()
-        loss = criterion(state_action_values, expected_state_action_values.unsqueeze(1))
+        loss = criterion(state_action_values, expected_state_action_values)
 
         # Optimize the model
         self.optimizer.zero_grad()
@@ -187,6 +183,7 @@ class DQNAgent(nn.Module, QAAgent):
         torch.nn.utils.clip_grad_norm_(self.policy_net.parameters(),
             self.config.training.optimizer.clip_grad_norm)  
         self.optimizer.step()
+        return loss.item()
 
 class LSTMDQN(nn.Module):
 
@@ -211,8 +208,6 @@ class LSTMDQN(nn.Module):
         obs_lengths, q_lengths = [len(o) for o in observations], [len(q) for q in questions]
         observations = nn.utils.rnn.pad_sequence(observations, batch_first=True)
         questions = nn.utils.rnn.pad_sequence(questions, batch_first=False)
-
-        print(obs_lengths)
 
         N, L1, C = observations.shape
         _, L2, _ = questions.shape

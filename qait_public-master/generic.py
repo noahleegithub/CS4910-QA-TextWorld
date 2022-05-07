@@ -6,10 +6,17 @@ import uuid
 import os
 import time
 import multiprocessing as mp
+import csv
 from os.path import join as pjoin
 from collections import namedtuple
 missing_words = set()
 
+def append_dict_to_csv(results_dict, csv_path, sep=","):
+    with open(csv_path, 'a') as f:
+        writer = csv.DictWriter(f, fieldnames=list(results_dict.keys()))
+        if os.path.getsize(csv_path) == 0:
+            writer.writeheader()    
+        writer.writerow(results_dict)
 
 def to_np(x):
     if isinstance(x, np.ndarray):
